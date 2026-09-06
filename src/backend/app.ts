@@ -2,7 +2,7 @@ import express, { Express, RequestHandler } from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DatabaseManager } from './db.js';
+import { IDatabaseManager } from './db.js';
 import { IGitLabService } from './services/gitlabService.js';
 import { ILdapService } from './services/ldapService.js';
 import { KroService } from './services/kroService.js';
@@ -18,7 +18,7 @@ import { AppConfig } from './config.js';
 
 export interface AppDependencies {
   config?: AppConfig;
-  dbManager: DatabaseManager;
+  dbManager: IDatabaseManager;
   gitlabService: IGitLabService;
   ldapService: ILdapService;
   kroService: KroService;

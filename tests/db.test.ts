@@ -7,27 +7,28 @@ describe('DatabaseManager - onboarded_teams', () => {
   const testDbPath = path.join(process.cwd(), 'data', 'test-platform.db');
   let dbManager: DatabaseManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
     dbManager = new DatabaseManager(testDbPath);
+    await dbManager.initialize();
   });
 
-  afterEach(() => {
-    dbManager.close();
+  afterEach(async () => {
+    await dbManager.close();
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
   });
 
-  it('migrates schema and creates onboarded_teams table with all required columns', () => {
-    const teams = dbManager.listTeams();
+  it('migrates schema and creates onboarded_teams table with all required columns', async () => {
+    const teams = await dbManager.listTeams();
     expect(teams).toEqual([]);
   });
 
-  it('creates, retrieves, and lists onboarded teams', () => {
-    const team = dbManager.createTeam({
+  it('creates, retrieves, and lists onboarded teams', async () => {
+    const team = await dbManager.createTeam({
       name: 'Platform Engineering',
       ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -42,22 +43,22 @@ describe('DatabaseManager - onboarded_teams', () => {
     expect(team.created_at).toBeDefined();
     expect(team.updated_at).toBeDefined();
 
-    const retrieved = dbManager.getTeamById(team.id);
+    const retrieved = await dbManager.getTeamById(team.id);
     expect(retrieved).toEqual(team);
 
-    const byLdap = dbManager.getTeamByLdapDn('cn=platform-eng,ou=groups,dc=example,dc=com');
+    const byLdap = await dbManager.getTeamByLdapDn('cn=platform-eng,ou=groups,dc=example,dc=com');
     expect(byLdap).toEqual(team);
   });
 
-  it('updates team attributes and toggles is_active', () => {
-    const team = dbManager.createTeam({
+  it('updates team attributes and toggles is_active', async () => {
+    const team = await dbManager.createTeam({
       name: 'DevOps',
       ldap_group_dn: 'cn=devops,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/devops',
       is_active: true,
     });
 
-    const updated = dbManager.updateTeam(team.id, {
+    const updated = await dbManager.updateTeam(team.id, {
       name: 'Cloud Platform',
       is_active: false,
     });
@@ -66,29 +67,29 @@ describe('DatabaseManager - onboarded_teams', () => {
     expect(updated?.name).toBe('Cloud Platform');
     expect(updated?.is_active).toBe(0);
 
-    const activeList = dbManager.listTeams(true);
+    const activeList = await dbManager.listTeams(true);
     expect(activeList).toHaveLength(0);
 
-    const fullList = dbManager.listTeams(false);
+    const fullList = await dbManager.listTeams(false);
     expect(fullList).toHaveLength(1);
   });
 
-  it('filters active teams for user by user LDAP group DNs', () => {
-    dbManager.createTeam({
+  it('filters active teams for user by user LDAP group DNs', async () => {
+    await dbManager.createTeam({
       name: 'Team Alpha',
       ldap_group_dn: 'cn=team-alpha,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/alpha',
       is_active: true,
     });
 
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Team Beta',
       ldap_group_dn: 'cn=team-beta,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/beta',
       is_active: false, // inactive
     });
 
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Team Gamma',
       ldap_group_dn: 'cn=team-gamma,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/gamma',
@@ -101,25 +102,25 @@ describe('DatabaseManager - onboarded_teams', () => {
       'cn=other-group,ou=groups,dc=example,dc=com',
     ];
 
-    const matched = dbManager.findActiveTeamsForUser(userGroups);
+    const matched = await dbManager.findActiveTeamsForUser(userGroups);
     expect(matched).toHaveLength(1);
     expect(matched[0].name).toBe('Team Alpha');
   });
 
-  it('deletes an onboarded team', () => {
-    const team = dbManager.createTeam({
+  it('deletes an onboarded team', async () => {
+    const team = await dbManager.createTeam({
       name: 'To Delete',
       ldap_group_dn: 'cn=delete-me,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'temp/delete',
     });
 
-    const deleted = dbManager.deleteTeam(team.id);
+    const deleted = await dbManager.deleteTeam(team.id);
     expect(deleted).toBe(true);
-    expect(dbManager.getTeamById(team.id)).toBeUndefined();
+    expect(await dbManager.getTeamById(team.id)).toBeUndefined();
   });
 
-  it('matches LDAP group DNs case-insensitively per RFC 4514', () => {
-    dbManager.createTeam({
+  it('matches LDAP group DNs case-insensitively per RFC 4514', async () => {
+    await dbManager.createTeam({
       name: 'Case Sensitive Test',
       ldap_group_dn: 'cn=engineers,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/engineers',
@@ -127,18 +128,18 @@ describe('DatabaseManager - onboarded_teams', () => {
     });
 
     // Lookup with mixed case
-    const found = dbManager.getTeamByLdapDn('CN=Engineers,OU=Groups,DC=EXAMPLE,DC=COM');
+    const found = await dbManager.getTeamByLdapDn('CN=Engineers,OU=Groups,DC=EXAMPLE,DC=COM');
     expect(found).toBeDefined();
     expect(found?.name).toBe('Case Sensitive Test');
 
     // Filter with upper case
-    const matched = dbManager.findActiveTeamsForUser(['CN=ENGINEERS,OU=GROUPS,DC=EXAMPLE,DC=COM']);
+    const matched = await dbManager.findActiveTeamsForUser(['CN=ENGINEERS,OU=GROUPS,DC=EXAMPLE,DC=COM']);
     expect(matched).toHaveLength(1);
     expect(matched[0].name).toBe('Case Sensitive Test');
   });
 
-  it('safely handles duplicate or whitespace-padded LDAP group DNs in findActiveTeamsForUser', () => {
-    dbManager.createTeam({
+  it('safely handles duplicate or whitespace-padded LDAP group DNs in findActiveTeamsForUser', async () => {
+    await dbManager.createTeam({
       name: 'Platform Engineering',
       ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -152,9 +153,8 @@ describe('DatabaseManager - onboarded_teams', () => {
       '',
     ];
 
-    const matched = dbManager.findActiveTeamsForUser(duplicateGroups);
+    const matched = await dbManager.findActiveTeamsForUser(duplicateGroups);
     expect(matched).toHaveLength(1);
     expect(matched[0].name).toBe('Platform Engineering');
   });
 });
-

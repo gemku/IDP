@@ -19,7 +19,7 @@ class DefaultMetricsClient implements IMetricsClient {
 
 export function startServer() {
   const config = loadConfig();
-  const dbManager = new DatabaseManager(config.server.databasePath);
+  const dbManager = new DatabaseManager(config.database);
   const gitlabService = new GitLabService(config.gitlab);
   const ldapService = process.env.NODE_ENV === 'test'
     ? new MockLdapService()

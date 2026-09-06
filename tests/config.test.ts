@@ -33,6 +33,36 @@ describe('AppConfig - Environment Configuration', () => {
     expect(config.ldap.bindDn).toBe('cn=admin,dc=example,dc=com');
     expect(config.ldap.baseDn).toBe('dc=example,dc=com');
     expect(config.kubernetes.kroNamespace).toBe('kro-system');
+    expect(config.database.client).toBe('sqlite');
+    expect(config.database.sqlite?.databasePath).toBe('data/platform.db');
+  });
+
+  it('detects postgres client from DATABASE_CLIENT or DATABASE_URL', () => {
+    const baseEnv = {
+      GITLAB_CLIENT_ID: 'mock-client-id',
+      GITLAB_CLIENT_SECRET: 'mock-client-secret',
+      LDAP_BIND_DN: 'cn=admin,dc=example,dc=com',
+      LDAP_BIND_PASSWORD: 'admin-password',
+    };
+
+    const pgEnv1 = loadConfig({
+      ...baseEnv,
+      DATABASE_CLIENT: 'postgres',
+      POSTGRES_HOST: 'pg.internal',
+      POSTGRES_PORT: '5433',
+      POSTGRES_DB: 'idp_db',
+    });
+    expect(pgEnv1.database.client).toBe('postgres');
+    expect(pgEnv1.database.postgres?.host).toBe('pg.internal');
+    expect(pgEnv1.database.postgres?.port).toBe(5433);
+    expect(pgEnv1.database.postgres?.database).toBe('idp_db');
+
+    const pgEnv2 = loadConfig({
+      ...baseEnv,
+      DATABASE_URL: 'postgresql://user:pass@dbserver:5432/platform_prod',
+    });
+    expect(pgEnv2.database.client).toBe('postgres');
+    expect(pgEnv2.database.postgres?.connectionString).toBe('postgresql://user:pass@dbserver:5432/platform_prod');
   });
 });
 

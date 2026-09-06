@@ -2,7 +2,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { SessionUser } from '../../types/models.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { ILdapService } from '../services/ldapService.js';
-import { DatabaseManager } from '../db.js';
+import { IDatabaseManager } from '../db.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: SessionUser;
@@ -11,7 +11,7 @@ export interface AuthenticatedRequest extends Request {
 export function createBearerAuthMiddleware(
   gitlabService: IGitLabService,
   ldapService: ILdapService,
-  dbManager: DatabaseManager
+  dbManager: IDatabaseManager
 ): RequestHandler {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (req.user || (req as any).session?.user || (req as any).mockUser) {
@@ -31,7 +31,7 @@ export function createBearerAuthMiddleware(
     try {
       const gitlabUser = await gitlabService.getUserProfile(token);
       const ldapGroups = await ldapService.getUserGroups(gitlabUser.username);
-      const activeTeams = dbManager.findActiveTeamsForUser(ldapGroups);
+      const activeTeams = await dbManager.findActiveTeamsForUser(ldapGroups);
 
       const sessionUser: SessionUser = {
         gitlabUser,

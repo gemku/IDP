@@ -2,13 +2,13 @@ import { Router, Request, Response } from 'express';
 import crypto from 'node:crypto';
 import { IGitLabService } from '../services/gitlabService.js';
 import { ILdapService } from '../services/ldapService.js';
-import { DatabaseManager } from '../db.js';
+import { IDatabaseManager } from '../db.js';
 import { SessionUser } from '../../types/models.js';
 
 export function createAuthRouter(
   gitlabService: IGitLabService,
   ldapService: ILdapService,
-  dbManager: DatabaseManager
+  dbManager: IDatabaseManager
 ): Router {
   const router = Router();
 
@@ -58,7 +58,7 @@ export function createAuthRouter(
       const ldapGroups = await ldapService.getUserGroups(gitlabUser.username);
 
       // 4. Match against onboarded_teams in database
-      const activeTeams = dbManager.findActiveTeamsForUser(ldapGroups);
+      const activeTeams = await dbManager.findActiveTeamsForUser(ldapGroups);
 
       const sessionUser: SessionUser = {
         gitlabUser,
@@ -103,7 +103,7 @@ export function createAuthRouter(
   });
 
   // GET /api/auth/me
-  router.get('/me', (req: Request, res: Response) => {
+  router.get('/me', async (req: Request, res: Response) => {
     const sessionUser = (req as any).user || (req as any).session?.user || (req as any).mockUser;
     if (!sessionUser) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -111,7 +111,7 @@ export function createAuthRouter(
     }
     // Refresh activeTeams dynamically from dbManager to reflect real-time team status
     if (sessionUser.ldapGroups && Array.isArray(sessionUser.ldapGroups)) {
-      sessionUser.activeTeams = dbManager.findActiveTeamsForUser(sessionUser.ldapGroups);
+      sessionUser.activeTeams = await dbManager.findActiveTeamsForUser(sessionUser.ldapGroups);
     }
     res.json({ user: sessionUser });
   });

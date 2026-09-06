@@ -117,7 +117,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
 
   it('authenticates user and resolves active team via LDAP groups', async () => {
     // 1. Onboard the team
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Platform Team',
       ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -159,7 +159,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
 
   it('returns 403 Access Denied when user LDAP groups do not match any active onboarded team', async () => {
     // Onboard team with different LDAP group
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Security Ops',
       ldap_group_dn: 'cn=sec-ops,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/core',
@@ -286,7 +286,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
   });
 
   it('authenticates API request using Bearer token without pre-existing cookie session', async () => {
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Platform Team',
       ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -315,7 +315,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     });
     sessionApp.use('/api/auth', createAuthRouter(mockGitLab, mockLdap, dbManager));
 
-    dbManager.createTeam({
+    await dbManager.createTeam({
       name: 'Platform Team',
       ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -353,14 +353,14 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
   });
 
   it('returns 409 Conflict when PUT /api/admin/teams/:id updates to an existing duplicate name or LDAP DN', async () => {
-    const team1 = dbManager.createTeam({
+    const team1 = await dbManager.createTeam({
       name: 'Alpha Team',
       ldap_group_dn: 'cn=alpha,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
       is_active: true,
     });
 
-    const team2 = dbManager.createTeam({
+    const team2 = await dbManager.createTeam({
       name: 'Beta Team',
       ldap_group_dn: 'cn=beta,dc=example,dc=com',
       gitlab_group_path: 'engineering/core',
@@ -453,7 +453,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
   });
 
   it('dynamically refreshes active teams on /api/auth/me when team status changes', async () => {
-    const team = dbManager.createTeam({
+    const team = await dbManager.createTeam({
       name: 'Dynamic Team',
       ldap_group_dn: 'cn=dynamic-team,ou=groups,dc=example,dc=com',
       gitlab_group_path: 'engineering/platform',
@@ -477,7 +477,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(res1.body.user.activeTeams).toHaveLength(1);
 
     // Admin deactivates team in DB
-    dbManager.updateTeam(team.id, { is_active: false });
+    await dbManager.updateTeam(team.id, { is_active: false });
 
     // Next /me call immediately reflects the deactivation without re-login
     const res2 = await request(userApp).get('/api/auth/me');

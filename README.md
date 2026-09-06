@@ -1,7 +1,7 @@
 # Internal Developer Platform (IDP) Orchestrator
 
 [![OpenSpec Driven](https://img.shields.io/badge/OpenSpec-Spec--Driven-indigo.svg)](openspec/specs)
-[![Tests Passing](https://img.shields.io/badge/tests-75%20passed-emerald.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-82%20passed-emerald.svg)](tests/)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24%20(native%20sqlite)-blue.svg)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![Kubernetes Native](https://img.shields.io/badge/Kubernetes-Native%20Orchestrator-326ce5.svg)](k8s/)
@@ -113,7 +113,7 @@ flowchart LR
 
 ## 🛠 Technology Stack
 
-- **Backend Runtime**: [Node.js 24+](https://nodejs.org/) using built-in native SQLite (`node:sqlite`).
+- **Backend Runtime**: [Node.js 24+](https://nodejs.org/) with dual database support: built-in native SQLite (`node:sqlite`) and [PostgreSQL](https://www.postgresql.org/) (`pg` connection pool).
 - **API Framework**: [Express 5](https://expressjs.com/) with native promise error propagation and strict type validation.
 - **Frontend UI**: [React 19](https://react.dev/), [Vite](https://vitejs.dev/), and [Tailwind CSS](https://tailwindcss.com/).
 - **Directory Service**: [ldapjs](https://github.com/ldapjs/node-ldapjs) with RFC 4515 special character sanitization.
@@ -195,7 +195,15 @@ Open **[http://localhost:3000](http://localhost:3000)** to access the developer 
 | Variable | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
 | `PORT` | No | `3000` | HTTP port for the Express application server. |
+| `DATABASE_CLIENT` | No | `sqlite` | Database engine: `sqlite` or `postgres`. |
 | `DATABASE_PATH` | No | `data/platform.db` | Local file path for the SQLite database. |
+| `DATABASE_URL` | No | — | Full PostgreSQL connection URI (e.g., `postgresql://user:pass@host:5432/db`). |
+| `POSTGRES_HOST` | No | `localhost` | PostgreSQL hostname when not using `DATABASE_URL`. |
+| `POSTGRES_PORT` | No | `5432` | PostgreSQL port. |
+| `POSTGRES_DB` | No | `platform` | PostgreSQL database name. |
+| `POSTGRES_USER` | No | `postgres` | PostgreSQL user account. |
+| `POSTGRES_PASSWORD` | No | — | PostgreSQL password. |
+| `POSTGRES_SSL` | No | `false` | Enable SSL encryption (`true` / `false`). |
 | `SESSION_SECRET` | No | `dev-insecure-...` | Key used to sign session cookies and OAuth CSRF tokens. |
 | `GITLAB_URL` | No | `http://gitlab.example.com` | Base URL of the GitLab instance. |
 | `GITLAB_CLIENT_ID` | **Yes** | — | OAuth 2.0 Application ID registered in GitLab. |

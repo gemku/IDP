@@ -1,9 +1,28 @@
+export type DatabaseClientType = 'sqlite' | 'postgres';
+
+export interface DatabaseConfig {
+  client: DatabaseClientType;
+  sqlite?: {
+    databasePath: string;
+  };
+  postgres?: {
+    connectionString?: string;
+    host?: string;
+    port?: number;
+    database?: string;
+    user?: string;
+    password?: string;
+    ssl?: boolean;
+  };
+}
+
 export interface AppConfig {
   server: {
     port: number;
     sessionSecret: string;
     databasePath: string;
   };
+  database: DatabaseConfig;
   gitlab: {
     url: string;
     clientId: string;
@@ -55,12 +74,41 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new ConfigValidationError(missing);
   }
 
+  const explicitClient = env.DATABASE_CLIENT?.toLowerCase();
+  const databaseUrl = env.DATABASE_URL;
+  const isPostgresUrl = Boolean(
+    databaseUrl &&
+      (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://'))
+  );
+  const isPostgresExplicit =
+    explicitClient === 'postgres' || explicitClient === 'postgresql' || explicitClient === 'pg';
+
+  const client: DatabaseClientType = isPostgresExplicit || isPostgresUrl ? 'postgres' : 'sqlite';
+  const databasePath = env.DATABASE_PATH || 'data/platform.db';
+
+  const databaseConfig: DatabaseConfig = {
+    client,
+    sqlite: {
+      databasePath,
+    },
+    postgres: {
+      connectionString: databaseUrl,
+      host: env.POSTGRES_HOST || 'localhost',
+      port: env.POSTGRES_PORT ? parseInt(env.POSTGRES_PORT, 10) : 5432,
+      database: env.POSTGRES_DB || env.POSTGRES_DATABASE || 'platform',
+      user: env.POSTGRES_USER || 'postgres',
+      password: env.POSTGRES_PASSWORD,
+      ssl: env.POSTGRES_SSL === 'true',
+    },
+  };
+
   return {
     server: {
       port: parseInt(env.PORT || '3000', 10),
       sessionSecret: env.SESSION_SECRET || 'dev-insecure-session-secret-replace-in-prod',
-      databasePath: env.DATABASE_PATH || 'data/platform.db',
+      databasePath,
     },
+    database: databaseConfig,
     gitlab: {
       url: gitlabUrl,
       clientId: gitlabClientId,
@@ -82,4 +130,3 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
   };
 }
-

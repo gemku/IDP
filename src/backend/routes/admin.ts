@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { DatabaseManager } from '../db.js';
+import { IDatabaseManager } from '../db.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { CreateTeamDTO, UpdateTeamDTO } from '../../types/models.js';
 import { requireAuth } from '../middleware/authGuard.js';
@@ -12,7 +12,7 @@ function parseNumericId(param: string | string[] | undefined): number | null {
 }
 
 export function createAdminRouter(
-  dbManager: DatabaseManager,
+  dbManager: IDatabaseManager,
   gitlabService: IGitLabService
 ): Router {
   const router = Router();
@@ -21,20 +21,20 @@ export function createAdminRouter(
   router.use(requireAuth);
 
   // GET /api/admin/teams
-  router.get('/teams', (req: Request, res: Response) => {
+  router.get('/teams', async (req: Request, res: Response) => {
     const onlyActive = req.query.active === 'true';
-    const teams = dbManager.listTeams(onlyActive);
+    const teams = await dbManager.listTeams(onlyActive);
     res.json({ teams });
   });
 
   // GET /api/admin/teams/:id
-  router.get('/teams/:id', (req: Request, res: Response) => {
+  router.get('/teams/:id', async (req: Request, res: Response) => {
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
       return;
     }
-    const team = dbManager.getTeamById(id);
+    const team = await dbManager.getTeamById(id);
     if (!team) {
       res.status(404).json({ error: 'Team not found' });
       return;
@@ -70,7 +70,7 @@ export function createAdminRouter(
     }
 
     try {
-      const created = dbManager.createTeam({
+      const created = await dbManager.createTeam({
         name,
         ldap_group_dn,
         gitlab_group_path,
@@ -89,7 +89,7 @@ export function createAdminRouter(
       res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
       return;
     }
-    const existing = dbManager.getTeamById(id);
+    const existing = await dbManager.getTeamById(id);
     if (!existing) {
       res.status(404).json({ error: 'Team not found' });
       return;
@@ -131,7 +131,7 @@ export function createAdminRouter(
     }
 
     try {
-      const updated = dbManager.updateTeam(id, {
+      const updated = await dbManager.updateTeam(id, {
         name,
         ldap_group_dn,
         gitlab_group_path,
@@ -145,13 +145,13 @@ export function createAdminRouter(
   });
 
   // PATCH /api/admin/teams/:id/toggle
-  router.patch('/teams/:id/toggle', (req: Request, res: Response) => {
+  router.patch('/teams/:id/toggle', async (req: Request, res: Response) => {
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
       return;
     }
-    const existing = dbManager.getTeamById(id);
+    const existing = await dbManager.getTeamById(id);
     if (!existing) {
       res.status(404).json({ error: 'Team not found' });
       return;
@@ -159,7 +159,7 @@ export function createAdminRouter(
 
     const newStatus = existing.is_active === 1 ? false : true;
     try {
-      const updated = dbManager.updateTeam(id, { is_active: newStatus });
+      const updated = await dbManager.updateTeam(id, { is_active: newStatus });
       res.json({ team: updated });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to toggle team status', details: err.message });
@@ -167,13 +167,13 @@ export function createAdminRouter(
   });
 
   // DELETE /api/admin/teams/:id
-  router.delete('/teams/:id', (req: Request, res: Response) => {
+  router.delete('/teams/:id', async (req: Request, res: Response) => {
     const id = parseNumericId(req.params.id);
     if (id === null) {
       res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
       return;
     }
-    const success = dbManager.deleteTeam(id);
+    const success = await dbManager.deleteTeam(id);
     if (!success) {
       res.status(404).json({ error: 'Team not found' });
       return;
@@ -183,4 +183,3 @@ export function createAdminRouter(
 
   return router;
 }
-
