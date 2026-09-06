@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express, { Express } from 'express';
 import request from 'supertest';
 import { DatabaseManager } from '../src/backend/db.js';
@@ -194,39 +194,76 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(res430(res403.status)).toBe(403);
   });
 
-  it('handles Admin team management CRUD, active toggle, and GitLab validation', async () => {
-    // 1. Invalid GitLab path rejected with 422
-    const resInvalid = await request(app).post('/api/admin/teams').send({
-      name: 'Bad Team',
-      ldap_group_dn: 'cn=bad,dc=example,dc=com',
-      gitlab_group_path: 'non-existent/group',
+  it('rejects unauthenticated requests to /api/admin endpoints with 401', async () => {
+    const resGet = await request(app).get('/api/admin/teams');
+    expect(resGet.status).toBe(401);
+    expect(resGet.body.error).toContain('Authentication required');
+
+    const resPost = await request(app).post('/api/admin/teams').send({
+      name: 'Unauthorized Team',
+      ldap_group_dn: 'cn=test,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
     });
+    expect(resPost.status).toBe(401);
+  });
+
+  it('returns 503 Directory Service Unavailable when LDAP lookup fails during OAuth callback', async () => {
+    vi.spyOn(mockLdap, 'getUserGroups').mockRejectedValueOnce(new Error('LDAP connection timeout'));
+
+    const res = await request(app).post('/api/auth/gitlab/callback').send({ code: 'valid-code-123' });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('Directory Service Unavailable');
+    expect(res.body.message).toContain('LDAP connection timeout');
+  });
+
+  it('handles Admin team management CRUD, active toggle, and GitLab validation', async () => {
+    const authHeader = { Authorization: 'Bearer mock-access-token-xyz' };
+
+    // 1. Invalid GitLab path rejected with 422
+    const resInvalid = await request(app)
+      .post('/api/admin/teams')
+      .set(authHeader)
+      .send({
+        name: 'Bad Team',
+        ldap_group_dn: 'cn=bad,dc=example,dc=com',
+        gitlab_group_path: 'non-existent/group',
+      });
     expect(resInvalid.status).toBe(422);
 
     // 2. Valid GitLab path accepted with 201
-    const resValid = await request(app).post('/api/admin/teams').send({
-      name: 'Core Platform',
-      ldap_group_dn: 'cn=core-eng,ou=groups,dc=example,dc=com',
-      gitlab_group_path: 'engineering/platform',
-      is_active: true,
-    });
+    const resValid = await request(app)
+      .post('/api/admin/teams')
+      .set(authHeader)
+      .send({
+        name: 'Core Platform',
+        ldap_group_dn: 'cn=core-eng,ou=groups,dc=example,dc=com',
+        gitlab_group_path: 'engineering/platform',
+        is_active: true,
+      });
     expect(resValid.status).toBe(201);
     expect(resValid.body.team.name).toBe('Core Platform');
 
     const teamId = resValid.body.team.id;
 
     // 3. Toggle active status
-    const resToggle = await request(app).patch(`/api/admin/teams/${teamId}/toggle`);
+    const resToggle = await request(app)
+      .patch(`/api/admin/teams/${teamId}/toggle`)
+      .set(authHeader);
     expect(resToggle.status).toBe(200);
     expect(resToggle.body.team.is_active).toBe(0);
 
     // 4. Delete team
-    const resDelete = await request(app).delete(`/api/admin/teams/${teamId}`);
+    const resDelete = await request(app)
+      .delete(`/api/admin/teams/${teamId}`)
+      .set(authHeader);
     expect(resDelete.status).toBe(200);
     expect(resDelete.body.success).toBe(true);
 
     // 5. Reject invalid non-numeric ID
-    const resInvalidId = await request(app).get('/api/admin/teams/invalid-id');
+    const resInvalidId = await request(app)
+      .get('/api/admin/teams/invalid-id')
+      .set(authHeader);
     expect(resInvalidId.status).toBe(400);
     expect(resInvalidId.body.error).toContain('numeric identifier');
   });
@@ -300,7 +337,10 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(resCallback.body.error).toContain('Missing OAuth authorization code');
 
     // 2. Admin POST with empty body
-    const resAdminEmpty = await request(app).post('/api/admin/teams').send();
+    const resAdminEmpty = await request(app)
+      .post('/api/admin/teams')
+      .set('Authorization', 'Bearer mock-access-token-xyz')
+      .send();
     expect(resAdminEmpty.status).toBe(400);
   });
 
@@ -322,6 +362,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     // Attempt to rename team2 to team1's name
     const resConflict = await request(app)
       .put(`/api/admin/teams/${team2.id}`)
+      .set('Authorization', 'Bearer mock-access-token-xyz')
       .send({ name: 'Alpha Team' });
 
     expect(resConflict.status).toBe(409);

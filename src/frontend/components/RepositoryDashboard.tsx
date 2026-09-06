@@ -73,7 +73,7 @@ export const RepositoryDashboard: React.FC<RepositoryDashboardProps> = ({
           Pipeline Milestones (KRO → EventSource → Workflow → Kpack)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {steps.map((step, idx) => (
+          {(steps || []).map((step, idx) => (
             <div
               key={step.id}
               className={`p-4 rounded-xl border transition-all ${

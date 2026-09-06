@@ -75,8 +75,8 @@ export class MetricsService {
 
   public async getBuildResourceUsage(namespace: string, podName: string): Promise<PodResourceUsage> {
     const [rawMetrics, limits] = await Promise.all([
-      this.client.getPodMetrics(namespace, podName),
-      this.client.getPodLimits(namespace, podName),
+      this.client.getPodMetrics(namespace, podName).catch(() => null),
+      this.client.getPodLimits(namespace, podName).catch(() => ({ cpuLimit: '2', memLimit: '4Gi' })),
     ]);
 
     let totalCpuUsed = 0;
@@ -89,8 +89,8 @@ export class MetricsService {
       }
     }
 
-    const cpuLimitCores = Math.max(0.1, parseCpuQuantity(limits.cpuLimit || '2'));
-    const memoryLimitBytes = Math.max(1024 * 1024, parseMemoryQuantity(limits.memLimit || '4Gi'));
+    const cpuLimitCores = Math.max(0.1, parseCpuQuantity(limits?.cpuLimit || '2'));
+    const memoryLimitBytes = Math.max(1024 * 1024, parseMemoryQuantity(limits?.memLimit || '4Gi'));
 
     const cpuPercent = Math.min(100, Math.round((totalCpuUsed / cpuLimitCores) * 100));
     const memoryPercent = Math.min(100, Math.round((totalMemUsed / memoryLimitBytes) * 100));

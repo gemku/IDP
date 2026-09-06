@@ -72,7 +72,7 @@ export const FleetDashboard: React.FC<{ stats: FleetStats }> = ({ stats }) => {
           <h3 className="text-sm font-semibold text-white">Team Activity Breakdown</h3>
         </div>
         <div className="divide-y divide-slate-800/60">
-          {stats.teamsActivity.map((team, idx) => (
+          {(stats.teamsActivity || []).map((team, idx) => (
             <div key={idx} className="px-5 py-3 flex items-center justify-between text-sm">
               <span className="font-medium text-slate-200">{team.teamName}</span>
               <div className="flex items-center gap-6">

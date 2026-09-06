@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { DatabaseManager } from '../db.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { CreateTeamDTO, UpdateTeamDTO } from '../../types/models.js';
+import { requireAuth } from '../middleware/authGuard.js';
 
 function parseNumericId(param: string | string[] | undefined): number | null {
   const str = Array.isArray(param) ? param[0] : param;
@@ -15,6 +16,9 @@ export function createAdminRouter(
   gitlabService: IGitLabService
 ): Router {
   const router = Router();
+
+  // All administrative endpoints require authentication
+  router.use(requireAuth);
 
   // GET /api/admin/teams
   router.get('/teams', (req: Request, res: Response) => {

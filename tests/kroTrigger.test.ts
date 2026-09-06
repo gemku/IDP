@@ -67,6 +67,22 @@ class MockGitLabWebhookService implements Partial<IGitLabService> {
     this.registeredHooks.push(hook);
     return hook;
   }
+
+  public async getGroupProjects(groupPath: string, token: string) {
+    if (groupPath === 'engineering/platform') {
+      return [
+        {
+          id: 123,
+          name: 'auth-service',
+          path: 'auth-service',
+          path_with_namespace: 'engineering/platform/auth-service',
+          web_url: 'https://gitlab.example.com/engineering/platform/auth-service',
+          visibility: 'internal' as const,
+        },
+      ];
+    }
+    return [];
+  }
 }
 
 describe('KRO Trigger Provisioning & GitLab Webhook Registration', () => {
@@ -150,6 +166,38 @@ describe('KRO Trigger Provisioning & GitLab Webhook Registration', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('numeric identifier');
+  });
+
+  it('rejects trigger creation with 403 Forbidden when project is outside user active teams', async () => {
+    const res = await request(app).post('/api/repos/999/trigger').send({
+      repoUrl: 'https://gitlab.example.com/other-team/secret-service.git',
+      repoName: 'secret-service',
+      targetNamespace: 'tenant-team-a',
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Forbidden');
+    expect(res.body.message).toContain('Project 999 does not belong to any of your active onboarded teams');
+  });
+
+  it('rejects trigger deletion with 403 Forbidden when project is outside user active teams', async () => {
+    const res = await request(app).delete('/api/repos/999/trigger?repoName=secret-service');
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Forbidden');
+    expect(res.body.message).toContain('Project 999 does not belong to any of your active onboarded teams');
+  });
+
+  it('requires non-empty repoName query parameter on trigger GET and DELETE routes', async () => {
+    // GET without repoName
+    const getRes = await request(app).get('/api/repos/123/trigger');
+    expect(getRes.status).toBe(400);
+    expect(getRes.body.error).toContain('repoName');
+
+    // DELETE without repoName
+    const deleteRes = await request(app).delete('/api/repos/123/trigger');
+    expect(deleteRes.status).toBe(400);
+    expect(deleteRes.body.error).toContain('repoName');
   });
 });
 

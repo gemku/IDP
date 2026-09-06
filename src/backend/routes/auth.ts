@@ -88,6 +88,13 @@ export function createAuthRouter(
         accessToken,
       });
     } catch (err: any) {
+      if (err.message && (err.message.includes('LDAP') || err.message.includes('ldap'))) {
+        res.status(503).json({
+          error: 'Directory Service Unavailable',
+          message: err.message,
+        });
+        return;
+      }
       res.status(500).json({
         error: 'Authentication failed',
         message: err.message || 'Internal server error during OAuth exchange',

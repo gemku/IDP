@@ -23,7 +23,7 @@ export function createReposRouter(gitlabService: IGitLabService): Router {
       return;
     }
 
-    const token = (req as any).session?.accessToken || (req.headers.authorization?.replace('Bearer ', '')) || 'dummy-token';
+    const token = (req as any).session?.accessToken || (req.headers.authorization?.replace(/^Bearer\s+/i, '')) || 'dummy-token';
 
     try {
       const projects = await gitlabService.getGroupProjects(team.gitlab_group_path, token);

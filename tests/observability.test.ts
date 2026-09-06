@@ -78,6 +78,50 @@ describe('Observability Services and Endpoints', () => {
     expect(usage.memoryPercent).toBe(25); // 1Gi / 4Gi = 25%
   });
 
+  it('gracefully falls back to pod limits and zero usage when getPodMetrics rejects', async () => {
+    const failingClient: IMetricsClient = {
+      getPodMetrics: async () => {
+        throw new Error('metrics.k8s.io 404 Not Found');
+      },
+      getPodLimits: async () => ({
+        cpuLimit: '4',
+        memLimit: '8Gi',
+      }),
+    };
+    const service = new MetricsService(failingClient);
+
+    const usage = await service.getBuildResourceUsage('default', 'offline-pod');
+
+    expect(usage.podName).toBe('offline-pod');
+    expect(usage.cpuUsedCores).toBe(0);
+    expect(usage.cpuLimitCores).toBe(4);
+    expect(usage.cpuPercent).toBe(0);
+    expect(usage.memoryUsedBytes).toBe(0);
+    expect(usage.memoryLimitBytes).toBe(8 * 1024 * 1024 * 1024);
+    expect(usage.memoryPercent).toBe(0);
+  });
+
+  it('gracefully falls back to default limits when both metrics and limits reject', async () => {
+    const completelyFailingClient: IMetricsClient = {
+      getPodMetrics: async () => {
+        throw new Error('K8s connection error');
+      },
+      getPodLimits: async () => {
+        throw new Error('K8s connection error');
+      },
+    };
+    const service = new MetricsService(completelyFailingClient);
+
+    const usage = await service.getBuildResourceUsage('default', 'offline-pod');
+
+    expect(usage.cpuUsedCores).toBe(0);
+    expect(usage.cpuLimitCores).toBe(2);
+    expect(usage.cpuPercent).toBe(0);
+    expect(usage.memoryUsedBytes).toBe(0);
+    expect(usage.memoryLimitBytes).toBe(4 * 1024 * 1024 * 1024);
+    expect(usage.memoryPercent).toBe(0);
+  });
+
   it('streams sequential Kpack initContainer logs (detect, build, export) via SSE', async () => {
     const mockLogSource = new MockLogSource();
     const logService = new LogStreamingService(mockLogSource);

@@ -127,12 +127,15 @@ describe('End-to-End Platform Integration Flow', () => {
 
   it('executes full end-to-end user lifecycle across all 5 core platform capabilities', async () => {
     // 1. Admin UI onboards team with validated GitLab path
-    const createTeamRes = await request(app).post('/api/admin/teams').send({
-      name: 'Platform Engineering',
-      ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
-      gitlab_group_path: 'engineering/platform',
-      is_active: true,
-    });
+    const createTeamRes = await request(app)
+      .post('/api/admin/teams')
+      .set('Authorization', 'Bearer alice-access-token')
+      .send({
+        name: 'Platform Engineering',
+        ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
+        gitlab_group_path: 'engineering/platform',
+        is_active: true,
+      });
     expect(createTeamRes.status).toBe(201);
     const team = createTeamRes.body.team;
     expect(team.name).toBe('Platform Engineering');
