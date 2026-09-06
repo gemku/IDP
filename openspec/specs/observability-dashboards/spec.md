@@ -7,7 +7,7 @@ Provides real-time fleet health visibility, 4-step pipeline status tracking, pod
 ## Requirements
 
 ### Requirement: Aggregated Fleet Dashboard
-The platform frontend and backend SHALL expose and render an Aggregated Fleet Dashboard at `/api/fleet/health` displaying aggregate build statistics, system status, active pipeline executions, and pass/fail metrics across all onboarded engineering teams without routing collision with repository paths.
+The platform frontend and backend SHALL expose and render an Aggregated Fleet Dashboard at `/api/fleet/health` displaying aggregate build statistics, system status, active pipeline executions, and pass/fail metrics across all onboarded engineering teams without routing collision with repository paths, and handling uninitialized state safely without runtime exceptions.
 
 #### Scenario: Platform user navigates to fleet dashboard
 - **WHEN** an authenticated user opens the Fleet Dashboard
@@ -17,6 +17,10 @@ The platform frontend and backend SHALL expose and render an Aggregated Fleet Da
 - **WHEN** the client fetches fleet health metrics
 - **THEN** the request targets `/api/fleet/health` independently from `/api/repos/:repoName/*`
 
+#### Scenario: Fleet dashboard handles uninitialized or undefined stats safely
+- **WHEN** the fleet dashboard renders before telemetry statistics have finished loading
+- **THEN** the component renders a defensive loading fallback state without runtime exceptions
+
 ### Requirement: Individual Repository 4-Step Pipeline Status
 The frontend SHALL render an Individual Repository Dashboard showing real-time 4-step pipeline status progression: KRO provisioner (`KRO`), webhook receiver (`EventSource`), pipeline runner (`Workflow`), and image builder (`Kpack`).
 
@@ -25,7 +29,7 @@ The frontend SHALL render an Individual Repository Dashboard showing real-time 4
 - **THEN** the UI displays four sequential milestone badges showing current state (Pending, Running, Succeeded, or Failed) with corresponding timestamp and latency details
 
 ### Requirement: Real-Time Resource Utilization Gauges
-The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, and falling back to pod resource limits when the metrics server is unavailable without failing the dashboard view.
+The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, clamping percentage values between 0 and 100 percent, and falling back to pod resource limits when the metrics server is unavailable without failing the dashboard view.
 
 #### Scenario: Monitoring active build resource consumption
 - **WHEN** a Kpack build pod is actively executing
@@ -39,8 +43,12 @@ The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`m
 - **WHEN** the metrics client returns numeric values or strings without standard Kubernetes unit suffixes
 - **THEN** the quantity parser converts and scales the inputs safely without throwing unhandled type errors
 
+#### Scenario: Utilization percentages bounded between 0 and 100
+- **WHEN** resource metrics are calculated for a build pod
+- **THEN** the backend clamps CPU and memory percentage values strictly within the range of 0 to 100 percent inclusive
+
 ### Requirement: Live Terminal Build Log Streaming via SSE
-The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, setting reverse-proxy unbuffering headers, cleanly aborting when clients disconnect, and displaying custom server-sent error event descriptions in the terminal log.
+The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, strictly validating repository names, setting reverse-proxy unbuffering headers, cleanly aborting when clients disconnect, displaying custom server-sent error event descriptions in the terminal log, and bounding log line capacity in the UI to prevent browser memory exhaustion.
 
 #### Scenario: User streams live build logs
 - **WHEN** a user opens the log viewer for an active build
@@ -65,3 +73,11 @@ The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoN
 #### Scenario: Server-sent error event rendered in terminal
 - **WHEN** the backend transmits a custom `event: error` SSE block with an error message payload
 - **THEN** the terminal component parses the error payload and renders an informative system error line in the log stream
+
+#### Scenario: Empty or whitespace repository name rejected
+- **WHEN** a client requests logs, metrics, or pipeline status with an empty or whitespace-only repository name parameter
+- **THEN** the backend returns a 400 Bad Request error
+
+#### Scenario: Terminal log buffer bounded to prevent memory exhaustion
+- **WHEN** an active build stream emits extensive log lines
+- **THEN** the dark terminal component limits its in-memory log buffer to the most recent entries, preventing tab memory exhaustion

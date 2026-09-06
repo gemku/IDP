@@ -7,7 +7,7 @@ Automates Kubernetes custom resource provisioning via KRO and coordinates webhoo
 ## Requirements
 
 ### Requirement: KRO GitLabTagTrigger Custom Resource Management
-The backend service SHALL use `@kubernetes/client-node` to dynamically create, inspect, and delete KRO `GitLabTagTrigger` custom resources under group `kro.run/v1alpha1` in the team namespace when a repository is linked to the platform, strictly validating numeric project identifiers, requiring repository names on trigger retrieval and deletion, and sanitizing resource names to adhere to Kubernetes RFC 1123 DNS subdomain requirements.
+The backend service SHALL use `@kubernetes/client-node` to dynamically create, inspect, and delete KRO `GitLabTagTrigger` custom resources under group `kro.run/v1alpha1` in the team namespace when a repository is linked to the platform, strictly validating numeric project identifiers, enforcing tenant authorization against the user's active onboarded teams on creation, retrieval, and deletion, requiring repository names on trigger retrieval and deletion, and sanitizing resource names to adhere to Kubernetes RFC 1123 DNS subdomain requirements.
 
 #### Scenario: Linking a repository to trigger provisioning
 - **WHEN** a user selects and enables pipeline triggering for a repository
@@ -28,6 +28,10 @@ The backend service SHALL use `@kubernetes/client-node` to dynamically create, i
 #### Scenario: Trigger query or delete request missing repoName parameter
 - **WHEN** a client requests GET or DELETE on `/api/repos/:projectId/trigger` without providing a `repoName` query parameter
 - **THEN** the backend rejects the request with a 400 Bad Request error indicating missing repository name
+
+#### Scenario: Tenant isolation enforced on trigger inspection
+- **WHEN** an authenticated user attempts to inspect or get a trigger for a project ID that does not belong to any of their active onboarded teams
+- **THEN** the backend rejects the request with a 403 Forbidden error and descriptive access denial message
 
 ### Requirement: KRO ResourceGraphDefinition Expansion
 The platform SHALL maintain a KRO `ResourceGraphDefinition` that expands `GitLabTagTrigger` resources into an Argo Events `EventSource` (configured for `tagPushEvent`) and a secure webhook token `Secret` generated with cryptographically strong randomness, adhering to cluster sensor dependency naming conventions.
