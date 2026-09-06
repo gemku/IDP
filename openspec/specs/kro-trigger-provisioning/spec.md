@@ -30,7 +30,7 @@ The backend service SHALL use `@kubernetes/client-node` to dynamically create, i
 - **THEN** the backend rejects the request with a 400 Bad Request error indicating missing repository name
 
 ### Requirement: KRO ResourceGraphDefinition Expansion
-The platform SHALL maintain a KRO `ResourceGraphDefinition` that expands `GitLabTagTrigger` resources into an Argo Events `EventSource` (configured for `tagPushEvent`) and a secure webhook token `Secret` generated with cryptographically strong randomness.
+The platform SHALL maintain a KRO `ResourceGraphDefinition` that expands `GitLabTagTrigger` resources into an Argo Events `EventSource` (configured for `tagPushEvent`) and a secure webhook token `Secret` generated with cryptographically strong randomness, adhering to cluster sensor dependency naming conventions.
 
 #### Scenario: KRO controller reconciles GitLabTagTrigger
 - **WHEN** a `GitLabTagTrigger` instance is created in the cluster
@@ -43,6 +43,10 @@ The platform SHALL maintain a KRO `ResourceGraphDefinition` that expands `GitLab
 #### Scenario: Webhook token generated with cryptographic randomness
 - **WHEN** a `GitLabTagTrigger` is created without an explicit secret token
 - **THEN** the backend generates the secret token using cryptographically secure random bytes (`node:crypto`) rather than predictable pseudorandom generators
+
+#### Scenario: Argo sensor dependency alignment
+- **WHEN** an Argo Events Sensor consumes tag push events
+- **THEN** its `eventSourceName` dependency matches the provisioned EventSource naming convention so tag push events trigger workflows reliably
 
 ### Requirement: Automated GitLab Project Webhook Registration
 The backend service SHALL call the GitLab REST API `POST /api/v4/projects/:id/hooks` to register a project webhook pointing to the Argo Events gateway with `tag_push_events: true` and the shared secret token retrieved from the generated Secret.

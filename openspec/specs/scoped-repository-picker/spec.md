@@ -7,7 +7,7 @@ Restricts repository discovery strictly to the user's onboarded GitLab group hie
 ## Requirements
 
 ### Requirement: Scoped Group Project Discovery
-The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/groups/:id/projects?include_subgroups=true&membership=true` using the group ID corresponding to the user's onboarded team, preventing access to out-of-scope repositories and rejecting trigger provisioning or management requests for project IDs outside the user's authorized team groups.
+The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/groups/:id/projects?include_subgroups=true&membership=true` using the group ID corresponding to the user's onboarded team, preventing access to out-of-scope repositories, strictly validating numeric `teamId`, `page`, and `limit` query parameters without propagating `NaN`, and rejecting trigger provisioning or management requests for project IDs outside the user's authorized team groups.
 
 #### Scenario: User queries repositories for their onboarded team
 - **WHEN** a user navigates to the repository selection view
@@ -20,6 +20,14 @@ The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/group
 #### Scenario: Attempt to provision trigger for project outside team group
 - **WHEN** a client submits a trigger provisioning request on `/api/repos/:projectId/trigger` for a project not belonging to any of their active teams
 - **THEN** the backend rejects the request with HTTP 403 Forbidden indicating unauthorized cross-team project access
+
+#### Scenario: Invalid non-numeric teamId parameter provided
+- **WHEN** a client submits a non-numeric `teamId` query parameter (e.g., `?teamId=invalid`)
+- **THEN** the backend responds with HTTP 400 Bad Request indicating that `teamId` must be a valid numeric identifier
+
+#### Scenario: Non-numeric pagination parameters safely bounded
+- **WHEN** a client supplies non-numeric or out-of-bounds `page` or `limit` query parameters (e.g., `?page=foo&limit=bar`)
+- **THEN** the backend safely falls back to default pagination bounds (`page=1`, `limit=10`) without calculating `NaN` or returning corrupted pagination metadata
 
 ### Requirement: Interactive Repository Picker Component
 The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, and repository visibility badges (public, internal, private).
