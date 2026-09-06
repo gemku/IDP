@@ -5,6 +5,25 @@ export interface ILdapService {
   getUserGroups(username: string): Promise<string[]>;
 }
 
+export function escapeLdapFilter(input: string): string {
+  return input.replace(/[\\*()\0]/g, (char) => {
+    switch (char) {
+      case '\\':
+        return '\\5c';
+      case '*':
+        return '\\2a';
+      case '(':
+        return '\\28';
+      case ')':
+        return '\\29';
+      case '\0':
+        return '\\00';
+      default:
+        return char;
+    }
+  });
+}
+
 export class LdapService implements ILdapService {
   private config: AppConfig['ldap'];
 
@@ -35,8 +54,9 @@ export class LdapService implements ILdapService {
           return reject(new Error(`LDAP Bind Failure: ${err.message}`));
         }
 
+        const sanitizedUsername = escapeLdapFilter(username);
         const opts: ldap.SearchOptions = {
-          filter: `(|(uid=${username})(sAMAccountName=${username}))`,
+          filter: `(|(uid=${sanitizedUsername})(sAMAccountName=${sanitizedUsername}))`,
           scope: 'sub',
           attributes: ['dn', 'memberOf'],
         };

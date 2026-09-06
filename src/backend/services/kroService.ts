@@ -1,4 +1,5 @@
 import * as k8s from '@kubernetes/client-node';
+import crypto from 'node:crypto';
 import { AppConfig } from '../config.js';
 
 export interface GitLabTagTriggerSpec {
@@ -221,7 +222,7 @@ export class KroService {
   }
 
   private generateSecretToken(): string {
-    return `sec-${Math.random().toString(36).substring(2, 15)}-${Date.now()}`;
+    return `sec-${crypto.randomBytes(24).toString('hex')}`;
   }
 }
 

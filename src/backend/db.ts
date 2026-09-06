@@ -21,14 +21,14 @@ export class DatabaseManager {
       CREATE TABLE IF NOT EXISTS onboarded_teams (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
-        ldap_group_dn TEXT NOT NULL UNIQUE,
+        ldap_group_dn TEXT NOT NULL UNIQUE COLLATE NOCASE,
         gitlab_group_path TEXT NOT NULL,
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
-      CREATE INDEX IF NOT EXISTS idx_onboarded_teams_ldap ON onboarded_teams(ldap_group_dn);
+      CREATE INDEX IF NOT EXISTS idx_onboarded_teams_ldap ON onboarded_teams(ldap_group_dn COLLATE NOCASE);
       CREATE INDEX IF NOT EXISTS idx_onboarded_teams_active ON onboarded_teams(is_active);
     `);
   }
@@ -51,7 +51,7 @@ export class DatabaseManager {
   }
 
   public getTeamByLdapDn(ldapGroupDn: string): OnboardedTeam | undefined {
-    const stmt = this.db.prepare(`SELECT * FROM onboarded_teams WHERE ldap_group_dn = ?`);
+    const stmt = this.db.prepare(`SELECT * FROM onboarded_teams WHERE ldap_group_dn COLLATE NOCASE = ?`);
     const team = stmt.get(ldapGroupDn) as unknown as OnboardedTeam | undefined;
     return team;
   }
@@ -95,7 +95,7 @@ export class DatabaseManager {
     const placeholders = userLdapGroupDns.map(() => '?').join(',');
     const stmt = this.db.prepare(`
       SELECT * FROM onboarded_teams
-      WHERE is_active = 1 AND ldap_group_dn IN (${placeholders})
+      WHERE is_active = 1 AND ldap_group_dn COLLATE NOCASE IN (${placeholders})
       ORDER BY name ASC
     `);
     return stmt.all(...userLdapGroupDns) as unknown as OnboardedTeam[];

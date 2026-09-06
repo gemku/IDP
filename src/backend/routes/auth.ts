@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'node:crypto';
 import { IGitLabService } from '../services/gitlabService.js';
 import { ILdapService } from '../services/ldapService.js';
 import { DatabaseManager } from '../db.js';
@@ -13,9 +14,13 @@ export function createAuthRouter(
 
   // GET /api/auth/gitlab/login
   router.get('/gitlab/login', (req: Request, res: Response) => {
-    const authUrl = gitlabService.getAuthorizationUrl();
+    const state = (req.query.state as string) || crypto.randomBytes(16).toString('hex');
+    if ((req as any).session) {
+      (req as any).session.oauthState = state;
+    }
+    const authUrl = gitlabService.getAuthorizationUrl(state);
     if (req.query.format === 'json') {
-      res.json({ url: authUrl });
+      res.json({ url: authUrl, state });
     } else {
       res.redirect(authUrl);
     }
@@ -24,6 +29,14 @@ export function createAuthRouter(
   // GET or POST /api/auth/gitlab/callback
   router.all('/gitlab/callback', async (req: Request, res: Response) => {
     const code = (req.query.code || req.body.code) as string;
+    const state = (req.query.state || req.body.state) as string;
+    const expectedState = (req as any).session?.oauthState;
+
+    if (expectedState && (!state || state !== expectedState)) {
+      res.status(403).json({ error: 'OAuth state parameter verification failed (CSRF protection)' });
+      return;
+    }
+
     if (!code) {
       res.status(400).json({ error: 'Missing OAuth authorization code' });
       return;

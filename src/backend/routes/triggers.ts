@@ -10,6 +10,11 @@ function parseNumericId(param: string | string[] | undefined): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+export function sanitizeTriggerName(repoName: string): string {
+  const clean = repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+  return `${clean || 'app'}-trigger`;
+}
+
 export function createTriggersRouter(kroService: KroService, gitlabService: IGitLabService): Router {
   const router = Router();
 
@@ -28,7 +33,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
     }
 
     const namespace = targetNamespace || 'default';
-    const triggerName = `${repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-trigger`;
+    const triggerName = sanitizeTriggerName(repoName);
     const token = (req as any).session?.accessToken || (req.headers.authorization?.replace('Bearer ', ''));
 
     try {
@@ -74,7 +79,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
     }
     const repoName = (req.query.repoName as string) || '';
     const namespace = (req.query.namespace as string) || 'default';
-    const triggerName = `${repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-trigger`;
+    const triggerName = sanitizeTriggerName(repoName);
 
     try {
       const trigger = await kroService.getTagTrigger(namespace, triggerName);
@@ -93,7 +98,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
     }
     const repoName = (req.query.repoName as string) || '';
     const namespace = (req.query.namespace as string) || 'default';
-    const triggerName = `${repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-trigger`;
+    const triggerName = sanitizeTriggerName(repoName);
 
     try {
       await kroService.deleteTagTrigger(namespace, triggerName);

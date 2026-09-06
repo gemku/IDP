@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import express, { Express } from 'express';
 import request from 'supertest';
 import { DatabaseManager } from '../src/backend/db.js';
-import { MockLdapService } from '../src/backend/services/ldapService.js';
+import { MockLdapService, escapeLdapFilter } from '../src/backend/services/ldapService.js';
 import { IGitLabService } from '../src/backend/services/gitlabService.js';
 import { createAuthRouter } from '../src/backend/routes/auth.js';
 import { createAdminRouter } from '../src/backend/routes/admin.js';
@@ -135,6 +135,23 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(res.body.user.activeTeams[0].name).toBe('Platform Team');
   });
 
+  it('rejects OAuth callback if state parameter does not match session state (CSRF protection)', async () => {
+    const sessionApp = express();
+    sessionApp.use(express.json());
+    sessionApp.use((req, res, next) => {
+      (req as any).session = { oauthState: 'expected-csrf-token-123' };
+      next();
+    });
+    sessionApp.use('/api/auth', createAuthRouter(mockGitLab as any, mockLdap, dbManager));
+
+    const res = await request(sessionApp)
+      .post('/api/auth/gitlab/callback')
+      .send({ code: 'valid-code-123', state: 'wrong-state' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('OAuth state parameter verification failed');
+  });
+
   it('returns 403 Access Denied when user LDAP groups do not match any active onboarded team', async () => {
     // Onboard team with different LDAP group
     dbManager.createTeam({
@@ -211,6 +228,15 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     const resInvalidId = await request(app).get('/api/admin/teams/invalid-id');
     expect(resInvalidId.status).toBe(400);
     expect(resInvalidId.body.error).toContain('numeric identifier');
+  });
+
+  it('escapes special characters per RFC 4515 to prevent LDAP injection', () => {
+    expect(escapeLdapFilter('alice')).toBe('alice');
+    expect(escapeLdapFilter('admin*')).toBe('admin\\2a');
+    expect(escapeLdapFilter('user(name)')).toBe('user\\28name\\29');
+    expect(escapeLdapFilter('c:\\test')).toBe('c:\\5ctest');
+    expect(escapeLdapFilter('null\0byte')).toBe('null\\00byte');
+    expect(escapeLdapFilter('admin*)(uid=*))(|(uid=*')).toBe('admin\\2a\\29\\28uid=\\2a\\29\\29\\28|\\28uid=\\2a');
   });
 });
 

@@ -117,5 +117,24 @@ describe('DatabaseManager - onboarded_teams', () => {
     expect(deleted).toBe(true);
     expect(dbManager.getTeamById(team.id)).toBeUndefined();
   });
+
+  it('matches LDAP group DNs case-insensitively per RFC 4514', () => {
+    dbManager.createTeam({
+      name: 'Case Sensitive Test',
+      ldap_group_dn: 'cn=engineers,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/engineers',
+      is_active: true,
+    });
+
+    // Lookup with mixed case
+    const found = dbManager.getTeamByLdapDn('CN=Engineers,OU=Groups,DC=EXAMPLE,DC=COM');
+    expect(found).toBeDefined();
+    expect(found?.name).toBe('Case Sensitive Test');
+
+    // Filter with upper case
+    const matched = dbManager.findActiveTeamsForUser(['CN=ENGINEERS,OU=GROUPS,DC=EXAMPLE,DC=COM']);
+    expect(matched).toHaveLength(1);
+    expect(matched[0].name).toBe('Case Sensitive Test');
+  });
 });
 
