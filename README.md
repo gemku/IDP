@@ -265,8 +265,10 @@ SQLite is a file-backed database that requires single-writer access:
 
 ## 📡 API Reference
 
-### Health
-- `GET /api/health`: Liveness and readiness probe endpoint. Returns `{ "status": "ok", "timestamp": "..." }`.
+### Health & Probes
+- `GET /api/health`: Deep readiness diagnostic endpoint. Executes active database probe; returns HTTP 200 with component latency or HTTP 503 on database failure. Supports `?probe=live` for liveness checks.
+- `GET /api/health/ready`: Kubernetes readiness probe endpoint. Returns HTTP 200 `{ "status": "ok", "check": "readiness", "database": { "healthy": true, "latencyMs": ... } }` or HTTP 503 on database disconnection.
+- `GET /api/health/live`: Kubernetes liveness probe endpoint. Returns HTTP 200 `{ "status": "ok", "check": "liveness" }` confirming process responsiveness.
 
 ### Authentication & User Identity (`/api/auth`)
 - `GET /api/auth/gitlab/login`: Initiates OAuth 2.0 authorization redirect.
@@ -312,19 +314,21 @@ npm test
 Current test suite summary:
 ```text
  ✓ tests/db.test.ts (7 tests)
- ✓ tests/kubernetesDeployment.test.ts (5 tests)
  ✓ tests/repos.test.ts (8 tests)
- ✓ tests/frontendEntry.test.ts (5 tests)
  ✓ tests/observability.test.ts (11 tests)
+ ✓ tests/healthLifecycle.test.ts (10 tests)
+ ✓ tests/frontendEntry.test.ts (5 tests)
+ ✓ tests/kubernetesDeployment.test.ts (5 tests)
  ✓ tests/repositoryPicker.test.ts (5 tests)
  ✓ tests/argoKpack.test.ts (4 tests)
- ✓ tests/config.test.ts (2 tests)
- ✓ tests/kroTrigger.test.ts (9 tests)
+ ✓ tests/postgresDb.test.ts (6 tests)
+ ✓ tests/config.test.ts (3 tests)
  ✓ tests/e2e.test.ts (1 test)
+ ✓ tests/kroTrigger.test.ts (9 tests)
  ✓ tests/auth.test.ts (18 tests)
 
- Test Files  11 passed (11)
-      Tests  75 passed (75)
+ Test Files  13 passed (13)
+      Tests  92 passed (92)
 ```
 
 ---
