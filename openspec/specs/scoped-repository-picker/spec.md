@@ -38,7 +38,7 @@ The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/group
 - **THEN** the backend extracts the first string search term safely without throwing runtime type errors
 
 ### Requirement: Interactive Repository Picker Component
-The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, repository visibility badges (public, internal, private), resetting pagination index when the team selection changes, and defensive fallbacks when remote fetches return undefined collections.
+The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, repository visibility badges (public, internal, private), resetting pagination index when the team selection changes, defensive fallbacks when remote fetches return undefined collections, and seamless selection callback integration within the unified single-page application shell.
 
 #### Scenario: User filters repositories by name
 - **WHEN** the user types characters into the search bar
@@ -59,3 +59,7 @@ The frontend SHALL render a React + Tailwind CSS repository picker component fea
 #### Scenario: Pagination resets to page 1 upon team selection change
 - **WHEN** the `teamId` prop changes to a different team
 - **THEN** the component resets `currentPage` to 1 to avoid requesting invalid page offsets
+
+#### Scenario: Repository selection updates active workspace
+- **WHEN** a user selects a repository in the picker
+- **THEN** the application shell transitions to the selected repository's live dashboard and terminal execution stream
