@@ -34,6 +34,28 @@ export class LdapService implements ILdapService {
   public async getUserGroups(username: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
       let client: ldap.Client;
+      let settled = false;
+
+      const safeReject = (err: Error) => {
+        if (!settled) {
+          settled = true;
+          try {
+            client?.unbind(() => {});
+          } catch {}
+          reject(err);
+        }
+      };
+
+      const safeResolve = (groups: string[]) => {
+        if (!settled) {
+          settled = true;
+          try {
+            client?.unbind(() => {});
+          } catch {}
+          resolve(groups);
+        }
+      };
+
       try {
         client = ldap.createClient({
           url: this.config.url,
@@ -45,13 +67,12 @@ export class LdapService implements ILdapService {
       }
 
       client.on('error', (err) => {
-        // Suppress unhandled errors if closed
+        safeReject(new Error(`LDAP Connection Error: ${err.message}`));
       });
 
       client.bind(this.config.bindDn, this.config.bindPassword, (err) => {
         if (err) {
-          client.unbind(() => {});
-          return reject(new Error(`LDAP Bind Failure: ${err.message}`));
+          return safeReject(new Error(`LDAP Bind Failure: ${err.message}`));
         }
 
         const sanitizedUsername = escapeLdapFilter(username);
@@ -63,8 +84,7 @@ export class LdapService implements ILdapService {
 
         client.search(this.config.baseDn, opts, (searchErr, res) => {
           if (searchErr) {
-            client.unbind(() => {});
-            return reject(new Error(`LDAP Search Failure: ${searchErr.message}`));
+            return safeReject(new Error(`LDAP Search Failure: ${searchErr.message}`));
           }
 
           const groups: string[] = [];
@@ -82,13 +102,11 @@ export class LdapService implements ILdapService {
           });
 
           res.on('error', (resErr) => {
-            client.unbind(() => {});
-            reject(new Error(`LDAP Entry Error: ${resErr.message}`));
+            safeReject(new Error(`LDAP Entry Error: ${resErr.message}`));
           });
 
-          res.on('end', (result) => {
-            client.unbind(() => {});
-            resolve(groups);
+          res.on('end', () => {
+            safeResolve(groups);
           });
         });
       });

@@ -92,13 +92,19 @@ export class DatabaseManager {
     if (!userLdapGroupDns || userLdapGroupDns.length === 0) {
       return [];
     }
-    const placeholders = userLdapGroupDns.map(() => '?').join(',');
+    const uniqueDns = Array.from(
+      new Set(userLdapGroupDns.map((dn) => dn && String(dn).trim()).filter(Boolean))
+    );
+    if (uniqueDns.length === 0) {
+      return [];
+    }
+    const placeholders = uniqueDns.map(() => '?').join(',');
     const stmt = this.db.prepare(`
       SELECT * FROM onboarded_teams
       WHERE is_active = 1 AND ldap_group_dn COLLATE NOCASE IN (${placeholders})
       ORDER BY name ASC
     `);
-    return stmt.all(...userLdapGroupDns) as unknown as OnboardedTeam[];
+    return stmt.all(...uniqueDns) as unknown as OnboardedTeam[];
   }
 
   public close(): void {

@@ -136,5 +136,25 @@ describe('DatabaseManager - onboarded_teams', () => {
     expect(matched).toHaveLength(1);
     expect(matched[0].name).toBe('Case Sensitive Test');
   });
+
+  it('safely handles duplicate or whitespace-padded LDAP group DNs in findActiveTeamsForUser', () => {
+    dbManager.createTeam({
+      name: 'Platform Engineering',
+      ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+
+    const duplicateGroups = [
+      'cn=platform-eng,ou=groups,dc=example,dc=com',
+      'cn=platform-eng,ou=groups,dc=example,dc=com',
+      ' cn=platform-eng,ou=groups,dc=example,dc=com ',
+      '',
+    ];
+
+    const matched = dbManager.findActiveTeamsForUser(duplicateGroups);
+    expect(matched).toHaveLength(1);
+    expect(matched[0].name).toBe('Platform Engineering');
+  });
 });
 

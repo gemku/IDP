@@ -42,6 +42,16 @@ export function startServer() {
     console.log(`Internal Developer Platform listening on port ${config.server.port}`);
   });
 
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${config.server.port} is already in use. Please terminate existing processes or configure another port.`);
+    } else {
+      console.error(`HTTP Server encountered an error: ${err.message}`);
+    }
+    dbManager.close();
+    process.exit(1);
+  });
+
   const gracefulShutdown = (signal: string) => {
     console.log(`Received ${signal}, closing server gracefully...`);
     server.close(() => {

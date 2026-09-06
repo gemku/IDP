@@ -109,5 +109,21 @@ describe('Scoped Repository Picker API', () => {
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('Forbidden');
   });
+
+  it('rejects non-numeric teamId with 400 Bad Request', async () => {
+    const res = await request(app).get('/api/repos?teamId=invalid-id');
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('numeric identifier');
+  });
+
+  it('safely handles non-numeric or negative pagination parameters without NaN', async () => {
+    const res = await request(app).get('/api/repos?page=abc&limit=xyz');
+    expect(res.status).toBe(200);
+    expect(res.body.pagination.page).toBe(1);
+    expect(res.body.pagination.limit).toBe(10);
+    expect(Number.isNaN(res.body.pagination.page)).toBe(false);
+    expect(Number.isNaN(res.body.pagination.limit)).toBe(false);
+    expect(res.body.projects).toHaveLength(3);
+  });
 });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express, { Express } from 'express';
 import request from 'supertest';
 import { DatabaseManager } from '../src/backend/db.js';
-import { MockLdapService, escapeLdapFilter } from '../src/backend/services/ldapService.js';
+import { MockLdapService, LdapService, escapeLdapFilter } from '../src/backend/services/ldapService.js';
 import { IGitLabService } from '../src/backend/services/gitlabService.js';
 import { createAuthRouter } from '../src/backend/routes/auth.js';
 import { createAdminRouter } from '../src/backend/routes/admin.js';
@@ -367,6 +367,17 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
 
     expect(resConflict.status).toBe(409);
     expect(resConflict.body.error).toContain('Failed to update team');
+  });
+
+  it('rejects with connection error when LdapService encounters a socket connection error', async () => {
+    const realLdapService = new LdapService({
+      url: 'ldap://127.0.0.1:59999',
+      bindDn: 'cn=admin,dc=example,dc=com',
+      bindPassword: 'secret',
+      baseDn: 'dc=example,dc=com',
+    });
+
+    await expect(realLdapService.getUserGroups('alice')).rejects.toThrow(/LDAP Connection Error|LDAP Bind Failure/);
   });
 });
 

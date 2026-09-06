@@ -50,7 +50,7 @@ spec:
         apiVersion: argoproj.io/v1alpha1
         kind: EventSource
         metadata:
-          name: ${schema.metadata.name + "-eventsource"}
+          name: gitlab-eventsource
           namespace: ${schema.spec.targetNamespace}
         spec:
           eventBusName: default
