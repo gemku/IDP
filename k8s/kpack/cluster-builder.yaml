@@ -1,0 +1,20 @@
+apiVersion: kpack.io/v1alpha2
+kind: ClusterBuilder
+metadata:
+  name: default-cluster-builder
+spec:
+  tag: registry.company.local/buildpacks/builder:jammy
+  stack:
+    name: base-jammy-stack
+    kind: ClusterStack
+  store:
+    name: default-paketo-store
+    kind: ClusterStore
+  order:
+    - group:
+        - id: paketo-buildpacks/nodejs
+    - group:
+        - id: paketo-buildpacks/java
+    - group:
+        - id: paketo-buildpacks/go
+

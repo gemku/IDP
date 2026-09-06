@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: gitlab-tag-sensor
+  namespace: default
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: gitlab-tag-dep
+      eventSourceName: gitlab-eventsource
+      eventName: tagPushEvent
+      filters:
+        data:
+          - path: body.ref
+            type: string
+            value:
+              - "refs/tags/.*"
+  triggers:
+    - template:
+        name: trigger-kpack-build-workflow
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: kpack-build-
+                namespace: default
+              spec:
+                entrypoint: build-and-publish
+                arguments:
+                  parameters:
+                    - name: gitTag
+                      value: ""
+                    - name: repoUrl
+                      value: ""
+                    - name: repoName
+                      value: ""
+                workflowTemplateRef:
+                  name: kpack-build-pipeline-template
+          parameters:
+            - src:
+                dependencyName: gitlab-tag-dep
+                dataKey: body.ref
+              dest: spec.arguments.parameters.0.value
+              operation: prepend
+              template: '{{ .Input | trimPrefix "refs/tags/" }}'
+            - src:
+                dependencyName: gitlab-tag-dep
+                dataKey: body.project.git_http_url
+              dest: spec.arguments.parameters.1.value
+            - src:
+                dependencyName: gitlab-tag-dep
+                dataKey: body.project.name
+              dest: spec.arguments.parameters.2.value
+

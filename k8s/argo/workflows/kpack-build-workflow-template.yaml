@@ -1,0 +1,88 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: kpack-build-pipeline-template
+  namespace: default
+spec:
+  entrypoint: build-and-publish
+  synchronization:
+    semaphore:
+      configMapKeyRef:
+        name: workflow-semaphore-config
+        key: max-builds
+  arguments:
+    parameters:
+      - name: gitTag
+        value: "latest"
+      - name: repoUrl
+        value: ""
+      - name: repoName
+        value: "app"
+      - name: containerRegistry
+        value: "registry.company.local/apps"
+  templates:
+    - name: build-and-publish
+      inputs:
+        parameters:
+          - name: gitTag
+          - name: repoUrl
+          - name: repoName
+          - name: containerRegistry
+      steps:
+        - - name: apply-kpack-image-and-wait
+            template: apply-kpack-image
+            arguments:
+              parameters:
+                - name: gitTag
+                  value: "{{inputs.parameters.gitTag}}"
+                - name: repoUrl
+                  value: "{{inputs.parameters.repoUrl}}"
+                - name: repoName
+                  value: "{{inputs.parameters.repoName}}"
+                - name: containerRegistry
+                  value: "{{inputs.parameters.containerRegistry}}"
+
+    - name: apply-kpack-image
+      inputs:
+        parameters:
+          - name: gitTag
+          - name: repoUrl
+          - name: repoName
+          - name: containerRegistry
+      resource:
+        action: apply
+        # Success and failure conditions ensure the step and semaphore remain blocked until Kpack build concludes
+        successCondition: status.conditions.@filter(type=="Ready").0.status == True
+        failureCondition: status.conditions.@filter(type=="Ready").0.status == False
+        manifest: |
+          apiVersion: kpack.io/v1alpha2
+          kind: Image
+          metadata:
+            name: {{inputs.parameters.repoName}}-image
+            namespace: default
+          spec:
+            tag: {{inputs.parameters.containerRegistry}}/{{inputs.parameters.repoName}}:{{inputs.parameters.gitTag}}
+            serviceAccountName: kpack-build-sa
+            builder:
+              name: default-cluster-builder
+              kind: ClusterBuilder
+            source:
+              git:
+                url: {{inputs.parameters.repoUrl}}
+                revision: {{inputs.parameters.gitTag}}
+            build:
+              env:
+                - name: NODE_OPTIONS
+                  value: "--max-old-space-size=3072"
+                - name: BP_JVM_VERSION
+                  value: "21"
+                - name: BPL_JVM_HEAD_ROOM
+                  value: "10"
+              resources:
+                limits:
+                  memory: 4Gi
+                  cpu: "2"
+                requests:
+                  memory: 2Gi
+                  cpu: "1"
+

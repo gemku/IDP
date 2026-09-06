@@ -1,0 +1,31 @@
+apiVersion: kpack.io/v1alpha2
+kind: Image
+metadata:
+  name: payment-service-image
+  namespace: default
+spec:
+  tag: registry.company.local/apps/payment-service:v1.2.0
+  serviceAccountName: kpack-build-sa
+  builder:
+    name: default-cluster-builder
+    kind: ClusterBuilder
+  source:
+    git:
+      url: https://gitlab.example.com/engineering/platform/payment-service.git
+      revision: v1.2.0
+  build:
+    env:
+      - name: NODE_OPTIONS
+        value: "--max-old-space-size=3072"
+      - name: BP_JVM_VERSION
+        value: "21"
+      - name: BPL_JVM_HEAD_ROOM
+        value: "10"
+    resources:
+      limits:
+        memory: 4Gi
+        cpu: "2"
+      requests:
+        memory: 2Gi
+        cpu: "1"
+

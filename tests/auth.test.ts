@@ -1,0 +1,215 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import express, { Express } from 'express';
+import request from 'supertest';
+import { DatabaseManager } from '../src/backend/db.js';
+import { MockLdapService } from '../src/backend/services/ldapService.js';
+import { IGitLabService } from '../src/backend/services/gitlabService.js';
+import { createAuthRouter } from '../src/backend/routes/auth.js';
+import { createAdminRouter } from '../src/backend/routes/admin.js';
+import { requireAuth, requireOnboardedTeam } from '../src/backend/middleware/authGuard.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+class MockGitLabService implements IGitLabService {
+  public validCodes = new Map<string, string>([['valid-code-123', 'mock-access-token-xyz']]);
+  public validGroups = new Set<string>(['engineering/platform', 'engineering/core']);
+
+  public getAuthorizationUrl(state?: string): string {
+    return `https://gitlab.example.com/oauth/authorize?client_id=test&state=${state || ''}`;
+  }
+
+  public async exchangeCodeForToken(code: string): Promise<{ access_token: string }> {
+    if (this.validCodes.has(code)) {
+      return { access_token: this.validCodes.get(code)! };
+    }
+    throw new Error('Invalid authorization code');
+  }
+
+  public async getUserProfile(accessToken: string) {
+    if (accessToken === 'mock-access-token-xyz') {
+      return {
+        id: 42,
+        username: 'alice.developer',
+        email: 'alice@company.com',
+        name: 'Alice Developer',
+      };
+    }
+    throw new Error('Invalid token');
+  }
+
+  public async validateGroupPath(groupPath: string) {
+    if (this.validGroups.has(groupPath)) {
+      return { id: 101, name: groupPath, path: groupPath };
+    }
+    throw new Error(`Group not found in GitLab: ${groupPath}`);
+  }
+
+  public async getGroupProjects(groupId: number | string, token: string) {
+    return [
+      {
+        id: 501,
+        name: 'payment-service',
+        path: 'payment-service',
+        path_with_namespace: `${groupId}/payment-service`,
+        web_url: `https://gitlab.example.com/${groupId}/payment-service`,
+        visibility: 'internal' as const,
+      },
+    ];
+  }
+
+  public async registerProjectWebhook(projectId: number, webhookUrl: string, secretToken: string) {
+    return { id: 999, project_id: projectId, url: webhookUrl };
+  }
+}
+
+describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
+  const testDbPath = path.join(process.cwd(), 'data', 'test-auth.db');
+  let dbManager: DatabaseManager;
+  let mockGitLab: MockGitLabService;
+  let mockLdap: MockLdapService;
+  let app: Express;
+
+  beforeEach(() => {
+    if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
+    dbManager = new DatabaseManager(testDbPath);
+    mockGitLab = new MockGitLabService();
+    mockLdap = new MockLdapService();
+
+    app = express();
+    app.use(express.json());
+
+    const authRouter = createAuthRouter(mockGitLab, mockLdap, dbManager);
+    const adminRouter = createAdminRouter(dbManager, mockGitLab);
+
+    app.use('/api/auth', authRouter);
+    app.use('/api/admin', adminRouter);
+
+    // Protected route
+    app.get('/api/protected/dashboard', requireOnboardedTeam, (req, res) => {
+      res.json({ message: 'Welcome to the platform dashboard!', user: (req as any).user });
+    });
+  });
+
+  afterEach(() => {
+    dbManager.close();
+    if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
+  });
+
+  it('generates the correct GitLab OAuth login redirect URL', async () => {
+    const res = await request(app).get('/api/auth/gitlab/login?format=json');
+    expect(res.status).toBe(200);
+    expect(res.body.url).toContain('https://gitlab.example.com/oauth/authorize');
+  });
+
+  it('rejects missing or invalid OAuth authorization codes', async () => {
+    const resNoCode = await request(app).post('/api/auth/gitlab/callback').send({});
+    expect(resNoCode.status).toBe(400);
+
+    const resInvalidCode = await request(app).post('/api/auth/gitlab/callback').send({ code: 'invalid-code' });
+    expect(resInvalidCode.status).toBe(500);
+    expect(resInvalidCode.body.error).toBe('Authentication failed');
+  });
+
+  it('authenticates user and resolves active team via LDAP groups', async () => {
+    // 1. Onboard the team
+    dbManager.createTeam({
+      name: 'Platform Team',
+      ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+
+    // 2. Set LDAP groups for user
+    mockLdap.setUserGroups('alice.developer', [
+      'cn=platform-eng,ou=groups,dc=example,dc=com',
+      'cn=all-employees,ou=groups,dc=example,dc=com',
+    ]);
+
+    // 3. Perform OAuth callback
+    const res = await request(app).post('/api/auth/gitlab/callback').send({ code: 'valid-code-123' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.user.gitlabUser.username).toBe('alice.developer');
+    expect(res.body.user.activeTeams).toHaveLength(1);
+    expect(res.body.user.activeTeams[0].name).toBe('Platform Team');
+  });
+
+  it('returns 403 Access Denied when user LDAP groups do not match any active onboarded team', async () => {
+    // Onboard team with different LDAP group
+    dbManager.createTeam({
+      name: 'Security Ops',
+      ldap_group_dn: 'cn=sec-ops,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/core',
+      is_active: true,
+    });
+
+    // User is only in non-onboarded group
+    mockLdap.setUserGroups('alice.developer', ['cn=contractors,ou=groups,dc=example,dc=com']);
+
+    const res = await request(app).post('/api/auth/gitlab/callback').send({ code: 'valid-code-123' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Access Denied');
+  });
+
+  it('blocks access to protected endpoints with 403 when user is not onboarded', async () => {
+    // Unauthenticated request
+    const res401 = await request(app).get('/api/protected/dashboard');
+    expect(res401.status).toBe(401);
+
+    // Mock un-onboarded user request
+    const customApp = express();
+    customApp.use((req, res, next) => {
+      (req as any).mockUser = {
+        gitlabUser: { username: 'bob' },
+        ldapGroups: ['cn=interns'],
+        activeTeams: [],
+      };
+      next();
+    });
+    customApp.get('/api/protected/dashboard', requireOnboardedTeam, (req, res) => {
+      res.json({ ok: true });
+    });
+
+    const res403 = await request(customApp).get('/api/protected/dashboard');
+    expect(res430(res403.status)).toBe(403);
+  });
+
+  it('handles Admin team management CRUD, active toggle, and GitLab validation', async () => {
+    // 1. Invalid GitLab path rejected with 422
+    const resInvalid = await request(app).post('/api/admin/teams').send({
+      name: 'Bad Team',
+      ldap_group_dn: 'cn=bad,dc=example,dc=com',
+      gitlab_group_path: 'non-existent/group',
+    });
+    expect(resInvalid.status).toBe(422);
+
+    // 2. Valid GitLab path accepted with 201
+    const resValid = await request(app).post('/api/admin/teams').send({
+      name: 'Core Platform',
+      ldap_group_dn: 'cn=core-eng,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+    expect(resValid.status).toBe(201);
+    expect(resValid.body.team.name).toBe('Core Platform');
+
+    const teamId = resValid.body.team.id;
+
+    // 3. Toggle active status
+    const resToggle = await request(app).patch(`/api/admin/teams/${teamId}/toggle`);
+    expect(resToggle.status).toBe(200);
+    expect(resToggle.body.team.is_active).toBe(0);
+
+    // 4. Delete team
+    const resDelete = await request(app).delete(`/api/admin/teams/${teamId}`);
+    expect(resDelete.status).toBe(200);
+    expect(resDelete.body.success).toBe(true);
+  });
+});
+
+function res430(status: number) {
+  return status;
+}
+

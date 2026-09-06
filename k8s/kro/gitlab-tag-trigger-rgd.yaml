@@ -1,0 +1,70 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gitlabtagtriggers.kro.run
+spec:
+  group: kro.run
+  kind: GitLabTagTrigger
+  types:
+    - name: GitLabTagTrigger
+      spec:
+        repoUrl: string
+        projectId: integer
+        targetNamespace: string | default="default"
+        tagPattern: string | default="refs/tags/*"
+        secretToken: string | default="auto-generated-token"
+      status:
+        ready: boolean
+        webhookUrl: string
+        eventSourceName: string
+        secretName: string
+        conditions: '[]metav1.Condition'
+  schema:
+    apiVersion: v1alpha1
+    kind: GitLabTagTrigger
+    spec:
+      repoUrl: ${schema.spec.repoUrl}
+      projectId: ${schema.spec.projectId}
+      targetNamespace: ${schema.spec.targetNamespace}
+      tagPattern: ${schema.spec.tagPattern}
+      secretToken: ${schema.spec.secretToken}
+    status:
+      ready: ${eventSource.status.conditions.?filter(c, c.type == "Ready")[0].status == "True"}
+      webhookUrl: "http://gitlab-eventsource-svc." + ${schema.spec.targetNamespace} + ".svc.cluster.local:12000/webhook"
+      eventSourceName: ${eventSource.metadata.name}
+      secretName: ${webhookSecret.metadata.name}
+  resources:
+    - id: webhookSecret
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${schema.metadata.name + "-secret"}
+          namespace: ${schema.spec.targetNamespace}
+        type: Opaque
+        stringData:
+          token: ${schema.spec.secretToken}
+
+    - id: eventSource
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: EventSource
+        metadata:
+          name: ${schema.metadata.name + "-eventsource"}
+          namespace: ${schema.spec.targetNamespace}
+        spec:
+          eventBusName: default
+          service:
+            ports:
+              - port: 12000
+                targetPort: 12000
+          gitlab:
+            tagPushEvent:
+              endpoint: /webhook
+              method: POST
+              port: "12000"
+              secretToken:
+                name: ${webhookSecret.metadata.name}
+                key: token
+              enableSSLVerification: false
+

@@ -1,0 +1,12 @@
+apiVersion: kro.run/v1alpha1
+kind: GitLabTagTrigger
+metadata:
+  name: payment-service-trigger
+  namespace: default
+spec:
+  repoUrl: "https://gitlab.example.com/engineering/platform/payment-service.git"
+  projectId: 501
+  targetNamespace: "default"
+  tagPattern: "refs/tags/v*"
+  secretToken: "super-secret-webhook-token"
+
