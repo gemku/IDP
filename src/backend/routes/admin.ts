@@ -44,7 +44,14 @@ export function createAdminRouter(
 
   // POST /api/admin/teams
   router.post('/teams', async (req: Request, res: Response) => {
-    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body || {};
+    const rawName = req.body?.name;
+    const rawLdapDn = req.body?.ldap_group_dn;
+    const rawGitlabPath = req.body?.gitlab_group_path;
+    const is_active = req.body?.is_active;
+
+    const name = typeof rawName === 'string' ? rawName.trim() : '';
+    const ldap_group_dn = typeof rawLdapDn === 'string' ? rawLdapDn.trim() : '';
+    const gitlab_group_path = typeof rawGitlabPath === 'string' ? rawGitlabPath.trim() : '';
 
     if (!name || !ldap_group_dn || !gitlab_group_path) {
       res.status(400).json({ error: 'Missing required fields: name, ldap_group_dn, gitlab_group_path' });
@@ -88,7 +95,27 @@ export function createAdminRouter(
       return;
     }
 
-    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body || {};
+    const rawName = req.body?.name;
+    const rawLdapDn = req.body?.ldap_group_dn;
+    const rawGitlabPath = req.body?.gitlab_group_path;
+    const is_active = req.body?.is_active;
+
+    if (rawName !== undefined && (typeof rawName !== 'string' || !rawName.trim())) {
+      res.status(400).json({ error: 'Invalid name: cannot be empty or whitespace' });
+      return;
+    }
+    if (rawLdapDn !== undefined && (typeof rawLdapDn !== 'string' || !rawLdapDn.trim())) {
+      res.status(400).json({ error: 'Invalid ldap_group_dn: cannot be empty or whitespace' });
+      return;
+    }
+    if (rawGitlabPath !== undefined && (typeof rawGitlabPath !== 'string' || !rawGitlabPath.trim())) {
+      res.status(400).json({ error: 'Invalid gitlab_group_path: cannot be empty or whitespace' });
+      return;
+    }
+
+    const name = rawName !== undefined ? rawName.trim() : undefined;
+    const ldap_group_dn = rawLdapDn !== undefined ? rawLdapDn.trim() : undefined;
+    const gitlab_group_path = rawGitlabPath !== undefined ? rawGitlabPath.trim() : undefined;
 
     // If gitlab_group_path is updated, re-validate
     if (gitlab_group_path && gitlab_group_path !== existing.gitlab_group_path) {

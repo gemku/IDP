@@ -48,9 +48,9 @@ export const RepositoryPicker: React.FC<RepositoryPickerProps> = ({
       fetchProjects(teamId, debouncedSearch, currentPage)
         .then((res) => {
           if (isMounted) {
-            setProjects(res.projects);
-            setTotalPages(res.totalPages || 1);
-            setTotalCount(res.total);
+            setProjects(res?.projects || []);
+            setTotalPages(res?.totalPages || 1);
+            setTotalCount(res?.total || 0);
             setIsLoading(false);
           }
         })

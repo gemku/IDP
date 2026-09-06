@@ -83,6 +83,26 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
       eventSource.close();
     });
 
+    eventSource.addEventListener('error', (e: any) => {
+      if (e?.data) {
+        try {
+          const errData = JSON.parse(e.data);
+          const msg = errData.error || errData.message || e.data;
+          setLogs((prev) => [
+            ...prev,
+            { phase: 'system', line: `[ERROR] ${msg}`, timestamp: new Date().toISOString() },
+          ]);
+        } catch {
+          setLogs((prev) => [
+            ...prev,
+            { phase: 'system', line: `[ERROR] ${e.data}`, timestamp: new Date().toISOString() },
+          ]);
+        }
+      }
+      setIsConnected(false);
+      eventSource.close();
+    });
+
     eventSource.onerror = () => {
       setIsConnected(false);
       eventSource.close();

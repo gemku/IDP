@@ -1,0 +1,36 @@
+## MODIFIED Requirements
+
+### Requirement: Admin Team Onboarding Management
+The platform SHALL provide an Admin UI allowing authenticated platform administrators to create, read, update, delete, and toggle the active status of records in `onboarded_teams`, validate `gitlab_group_path` values against the GitLab API, strictly validate numeric identifier route parameters, reject whitespace-only mutation values, safely handle missing request bodies, return structured JSON errors on malformed payloads, and reject duplicate team updates with conflict errors.
+
+#### Scenario: Administrator adds and validates a new team
+- **WHEN** an administrator submits a new team with name, LDAP group DN, and GitLab group path
+- **THEN** the backend validates the GitLab group path via `GET /api/v4/groups/:id` before persisting the active record in `onboarded_teams`
+
+#### Scenario: Administrator enters an invalid GitLab group path
+- **WHEN** an administrator enters a GitLab group path that does not exist or is inaccessible
+- **THEN** the backend rejects the submission with a 422 Unprocessable Entity error indicating the group could not be verified in GitLab
+
+#### Scenario: Non-numeric team ID provided
+- **WHEN** a client submits a non-numeric team ID to an admin route (e.g., `/api/admin/teams/abc`)
+- **THEN** the backend responds with a 400 Bad Request error indicating an invalid numeric ID format
+
+#### Scenario: Administrator updates team with conflicting unique attributes
+- **WHEN** an administrator submits an update to a team's name or LDAP DN that conflicts with an existing team
+- **THEN** the backend intercepts the constraint violation and returns a 409 Conflict status with error details instead of a 500 error
+
+#### Scenario: Request body missing or empty on admin mutation endpoints
+- **WHEN** an admin request is received without a payload or with non-JSON Content-Type
+- **THEN** the endpoint rejects the request with a 400 Bad Request error without raising unhandled destructuring exceptions
+
+#### Scenario: Unauthenticated request to admin endpoints rejected
+- **WHEN** an unauthenticated client sends a request to any `/api/admin/*` endpoint
+- **THEN** the backend rejects the request with a 401 Unauthorized status
+
+#### Scenario: Whitespace-only string rejected in team creation or update
+- **WHEN** an administrator submits a team name, LDAP DN, or GitLab group path consisting entirely of whitespace
+- **THEN** the backend rejects the submission with a 400 Bad Request error indicating missing required fields
+
+#### Scenario: Malformed JSON payload returns structured JSON error
+- **WHEN** a client sends a request body with invalid JSON syntax
+- **THEN** the application error middleware catches the syntax error and responds with HTTP 400 and a JSON `{ "error": "Invalid JSON payload" }` response

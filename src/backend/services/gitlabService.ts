@@ -7,7 +7,7 @@ export interface IGitLabService {
   exchangeCodeForToken(code: string): Promise<{ access_token: string; refresh_token?: string }>;
   getUserProfile(accessToken: string): Promise<GitLabUser>;
   validateGroupPath(groupPath: string, token?: string): Promise<{ id: number; name: string; path: string }>;
-  getGroupProjects(groupId: number | string, token: string): Promise<GitLabProject[]>;
+  getGroupProjects(groupId: number | string, token?: string): Promise<GitLabProject[]>;
   registerProjectWebhook(projectId: number, webhookUrl: string, secretToken: string, token?: string): Promise<any>;
 }
 
@@ -61,13 +61,13 @@ export class GitLabService implements IGitLabService {
     };
   }
 
-  public async getGroupProjects(groupId: number | string, token: string): Promise<GitLabProject[]> {
+  public async getGroupProjects(groupId: number | string, token?: string): Promise<GitLabProject[]> {
+    const authToken = token || this.config.adminToken;
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
     const encoded = encodeURIComponent(groupId);
     const response = await axios.get(
       `${this.config.url}/api/v4/groups/${encoded}/projects?include_subgroups=true&membership=true&per_page=100`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { headers }
     );
     return response.data.map((p: any) => ({
       id: p.id,

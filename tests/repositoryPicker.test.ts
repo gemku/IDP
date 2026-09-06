@@ -91,5 +91,26 @@ describe('RepositoryPicker Component Logic', () => {
     expect(page3.sliced).toHaveLength(5);
     expect(page3.sliced[0].id).toBe(21);
   });
+
+  it('safely defaults to empty array and 0 total when fetcher resolves with undefined projects', () => {
+    const processResponse = (res: any) => ({
+      projects: res?.projects || [],
+      totalPages: res?.totalPages || 1,
+      totalCount: res?.total || 0,
+    });
+
+    const malformed1 = processResponse(undefined);
+    expect(malformed1.projects).toEqual([]);
+    expect(malformed1.totalPages).toBe(1);
+    expect(malformed1.totalCount).toBe(0);
+
+    const malformed2 = processResponse({ error: 'Failed to fetch' });
+    expect(malformed2.projects).toEqual([]);
+    expect(malformed2.totalCount).toBe(0);
+
+    const valid = processResponse({ projects: sampleProjects, totalPages: 1, total: 2 });
+    expect(valid.projects).toHaveLength(2);
+    expect(valid.totalCount).toBe(2);
+  });
 });
 

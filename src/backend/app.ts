@@ -50,6 +50,19 @@ export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler)
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Global error-handling middleware
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (res.headersSent) {
+      return next(err);
+    }
+    if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+      res.status(400).json({ error: 'Invalid JSON payload' });
+      return;
+    }
+    const statusCode = typeof err.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : 500;
+    res.status(statusCode).json({ error: err.message || 'Internal server error' });
+  });
+
   return app;
 }
 

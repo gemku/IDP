@@ -125,5 +125,29 @@ describe('Scoped Repository Picker API', () => {
     expect(Number.isNaN(res.body.pagination.limit)).toBe(false);
     expect(res.body.projects).toHaveLength(3);
   });
+
+  it('allows token to be undefined and calls getGroupProjects cleanly without dummy-token', async () => {
+    let capturedToken: string | undefined = 'initial';
+    const trackingGitLab: Partial<IGitLabService> = {
+      async getGroupProjects(groupId: number | string, token?: string) {
+        capturedToken = token;
+        return [];
+      },
+    };
+
+    const testApp = express();
+    testApp.use((req, res, next) => {
+      (req as any).mockUser = {
+        gitlabUser: { id: 1, username: 'alice' },
+        activeTeams: [mockTeam],
+      };
+      next();
+    });
+    testApp.use('/api/repos', createReposRouter(trackingGitLab as IGitLabService));
+
+    const res = await request(testApp).get('/api/repos');
+    expect(res.status).toBe(200);
+    expect(capturedToken).toBeUndefined();
+  });
 });
 

@@ -7,6 +7,10 @@ import { IGitLabService } from '../src/backend/services/gitlabService.js';
 import { createAuthRouter } from '../src/backend/routes/auth.js';
 import { createAdminRouter } from '../src/backend/routes/admin.js';
 import { requireAuth, requireOnboardedTeam, createBearerAuthMiddleware } from '../src/backend/middleware/authGuard.js';
+import { createApp } from '../src/backend/app.js';
+import { KroService } from '../src/backend/services/kroService.js';
+import { MetricsService } from '../src/backend/services/metricsService.js';
+import { LogStreamingService, MockLogSource } from '../src/backend/services/logStreamingService.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -378,6 +382,70 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     });
 
     await expect(realLdapService.getUserGroups('alice')).rejects.toThrow(/LDAP Connection Error|LDAP Bind Failure/);
+  });
+
+  it('rejects whitespace-only fields in admin team creation and updates with 400', async () => {
+    const authHeader = { Authorization: 'Bearer mock-access-token-xyz' };
+
+    // POST with whitespace name
+    const resPost = await request(app)
+      .post('/api/admin/teams')
+      .set(authHeader)
+      .send({
+        name: '   ',
+        ldap_group_dn: 'cn=test,dc=example,dc=com',
+        gitlab_group_path: 'engineering/platform',
+      });
+    expect(resPost.status).toBe(400);
+    expect(resPost.body.error).toContain('Missing required fields');
+
+    // Create valid team first
+    const resValid = await request(app)
+      .post('/api/admin/teams')
+      .set(authHeader)
+      .send({
+        name: 'White Space Test',
+        ldap_group_dn: 'cn=ws-test,dc=example,dc=com',
+        gitlab_group_path: 'engineering/platform',
+      });
+    expect(resValid.status).toBe(201);
+    const teamId = resValid.body.team.id;
+
+    // PUT with whitespace name
+    const resPut = await request(app)
+      .put(`/api/admin/teams/${teamId}`)
+      .set(authHeader)
+      .send({ name: '   ' });
+    expect(resPut.status).toBe(400);
+    expect(resPut.body.error).toContain('cannot be empty or whitespace');
+  });
+
+  it('returns clean JSON error when request body contains invalid JSON syntax', async () => {
+    const mockK8sApi: any = {
+      createNamespacedCustomObject: async () => ({ body: {} }),
+      getNamespacedCustomObject: async () => ({ body: {} }),
+      deleteNamespacedCustomObject: async () => ({ body: {} }),
+      listNamespacedCustomObject: async () => ({ body: { items: [] } }),
+    };
+    const fullApp = createApp({
+      dbManager,
+      gitlabService: mockGitLab,
+      ldapService: mockLdap,
+      kroService: new KroService(mockK8sApi),
+      metricsService: new MetricsService({
+        getPodMetrics: async () => ({ containers: [] }),
+        getPodLimits: async () => ({ cpuLimit: '2', memLimit: '4Gi' }),
+      }),
+      logStreamingService: new LogStreamingService(new MockLogSource()),
+    });
+
+    const res = await request(fullApp)
+      .post('/api/admin/teams')
+      .set('Content-Type', 'application/json')
+      .send('{"malformed": json content}');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid JSON payload');
   });
 });
 
