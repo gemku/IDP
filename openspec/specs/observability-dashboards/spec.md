@@ -25,7 +25,7 @@ The frontend SHALL render an Individual Repository Dashboard showing real-time 4
 - **THEN** the UI displays four sequential milestone badges showing current state (Pending, Running, Succeeded, or Failed) with corresponding timestamp and latency details
 
 ### Requirement: Real-Time Resource Utilization Gauges
-The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, transmitting values to frontend radial gauges.
+The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, and transmitting values to frontend radial gauges.
 
 #### Scenario: Monitoring active build resource consumption
 - **WHEN** a Kpack build pod is actively executing
@@ -35,8 +35,12 @@ The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`m
 - **WHEN** the Kubernetes metrics server is unreachable or reports 404
 - **THEN** the dashboard renders fallback indicators showing resource limits without failing the dashboard view
 
+#### Scenario: Numeric or unformatted resource quantity inputs
+- **WHEN** the metrics client returns numeric values or strings without standard Kubernetes unit suffixes
+- **THEN** the quantity parser converts and scales the inputs safely without throwing unhandled type errors
+
 ### Requirement: Live Terminal Build Log Streaming via SSE
-The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, cleanly aborting when clients disconnect.
+The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, setting reverse-proxy unbuffering headers and cleanly aborting when clients disconnect.
 
 #### Scenario: User streams live build logs
 - **WHEN** a user opens the log viewer for an active build
@@ -49,3 +53,11 @@ The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoN
 #### Scenario: Client disconnects during streaming
 - **WHEN** the client terminates the HTTP connection while logs are actively streaming
 - **THEN** the server catches the connection close event, stops tailing and timer loops, and releases all stream listeners immediately
+
+#### Scenario: Ingress reverse proxy stream transmission
+- **WHEN** the SSE stream is initiated through an ingress proxy
+- **THEN** the backend transmits `X-Accel-Buffering: no` in response headers to ensure real-time chunk delivery
+
+#### Scenario: Terminal component handles dynamic phase updates and clipboard actions
+- **WHEN** log chunks are received across build phases or copied to clipboard
+- **THEN** the terminal component captures the active build phase without stale closure anomalies and handles clipboard rejections gracefully

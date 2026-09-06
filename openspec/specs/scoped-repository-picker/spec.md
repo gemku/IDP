@@ -18,7 +18,7 @@ The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/group
 - **THEN** the backend rejects the request with HTTP 403 Forbidden
 
 ### Requirement: Interactive Repository Picker Component
-The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side or client pagination, and repository visibility badges (public, internal, private).
+The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, and repository visibility badges (public, internal, private).
 
 #### Scenario: User filters repositories by name
 - **WHEN** the user types characters into the search bar
@@ -28,3 +28,6 @@ The frontend SHALL render a React + Tailwind CSS repository picker component fea
 - **WHEN** projects are loaded in the picker
 - **THEN** each repository item renders a color-coded Tailwind badge indicating its visibility level (green for public, yellow for internal, purple for private)
 
+#### Scenario: Client-side pagination in fallback mode
+- **WHEN** repositories are filtered locally without a remote fetcher and the user navigates between pages
+- **THEN** the picker slices and displays the repository subset for the active page index
