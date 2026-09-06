@@ -22,6 +22,12 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const currentPhaseRef = useRef<string>('idle');
+
+  const updatePhase = (phase: string) => {
+    currentPhaseRef.current = phase;
+    setCurrentPhase(phase);
+  };
 
   useEffect(() => {
     if (autoScroll && terminalEndRef.current) {
@@ -36,21 +42,27 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
     setIsConnected(true);
 
     eventSource.addEventListener('start', (e: any) => {
-      const data = JSON.parse(e.data);
-      setCurrentPhase('detect');
-      setLogs((prev) => [
-        ...prev,
-        { phase: 'system', line: `[SYSTEM] Connected to build pod: ${data.podName}`, timestamp: new Date().toISOString() },
-      ]);
+      try {
+        const data = JSON.parse(e.data);
+        updatePhase('detect');
+        setLogs((prev) => [
+          ...prev,
+          { phase: 'system', line: `[SYSTEM] Connected to build pod: ${data.podName}`, timestamp: new Date().toISOString() },
+        ]);
+      } catch {
+        updatePhase('detect');
+      }
     });
 
     eventSource.addEventListener('phase', (e: any) => {
-      const data = JSON.parse(e.data);
-      setCurrentPhase(data.phase);
-      setLogs((prev) => [
-        ...prev,
-        { phase: data.phase, line: `--- PHASE: ${data.phase.toUpperCase()} ---`, timestamp: new Date().toISOString() },
-      ]);
+      try {
+        const data = JSON.parse(e.data);
+        updatePhase(data.phase);
+        setLogs((prev) => [
+          ...prev,
+          { phase: data.phase, line: `--- PHASE: ${data.phase.toUpperCase()} ---`, timestamp: new Date().toISOString() },
+        ]);
+      } catch {}
     });
 
     eventSource.onmessage = (e) => {
@@ -60,13 +72,13 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
       } catch {
         setLogs((prev) => [
           ...prev,
-          { phase: currentPhase, line: e.data, timestamp: new Date().toISOString() },
+          { phase: currentPhaseRef.current, line: e.data, timestamp: new Date().toISOString() },
         ]);
       }
     };
 
     eventSource.addEventListener('complete', () => {
-      setCurrentPhase('complete');
+      updatePhase('complete');
       setIsConnected(false);
       eventSource.close();
     });
@@ -83,7 +95,9 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
 
   const copyToClipboard = () => {
     const text = logs.map((l) => `[${l.phase}] ${l.line}`).join('\n');
-    navigator.clipboard.writeText(text);
+    navigator.clipboard?.writeText(text).catch(() => {
+      // Gracefully ignore clipboard rejection in restricted contexts
+    });
   };
 
   const getPhaseColor = (phase: string) => {

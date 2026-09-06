@@ -40,7 +40,7 @@ export function createAdminRouter(
 
   // POST /api/admin/teams
   router.post('/teams', async (req: Request, res: Response) => {
-    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body;
+    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body || {};
 
     if (!name || !ldap_group_dn || !gitlab_group_path) {
       res.status(400).json({ error: 'Missing required fields: name, ldap_group_dn, gitlab_group_path' });
@@ -84,7 +84,7 @@ export function createAdminRouter(
       return;
     }
 
-    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body;
+    const { name, ldap_group_dn, gitlab_group_path, is_active } = req.body || {};
 
     // If gitlab_group_path is updated, re-validate
     if (gitlab_group_path && gitlab_group_path !== existing.gitlab_group_path) {
@@ -99,14 +99,18 @@ export function createAdminRouter(
       }
     }
 
-    const updated = dbManager.updateTeam(id, {
-      name,
-      ldap_group_dn,
-      gitlab_group_path,
-      is_active: is_active !== undefined ? Boolean(is_active) : undefined,
-    });
+    try {
+      const updated = dbManager.updateTeam(id, {
+        name,
+        ldap_group_dn,
+        gitlab_group_path,
+        is_active: is_active !== undefined ? Boolean(is_active) : undefined,
+      });
 
-    res.json({ team: updated });
+      res.json({ team: updated });
+    } catch (err: any) {
+      res.status(409).json({ error: 'Failed to update team (likely duplicate name or LDAP DN)', details: err.message });
+    }
   });
 
   // PATCH /api/admin/teams/:id/toggle

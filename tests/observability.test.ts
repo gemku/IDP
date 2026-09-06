@@ -50,6 +50,19 @@ describe('Observability Services and Endpoints', () => {
     expect(parseMemoryQuantity('512Ki')).toBe(512 * 1024);
   });
 
+  it('parses Kubernetes CPU and Memory quantities with numeric and edge case inputs safely', () => {
+    expect(parseCpuQuantity(2)).toBe(2);
+    expect(parseCpuQuantity(0)).toBe(0);
+    expect(parseCpuQuantity(undefined)).toBe(0);
+    expect(parseCpuQuantity('')).toBe(0);
+
+    expect(parseMemoryQuantity(1048576)).toBe(1048576);
+    expect(parseMemoryQuantity(0)).toBe(0);
+    expect(parseMemoryQuantity(undefined)).toBe(0);
+    expect(parseMemoryQuantity('')).toBe(0);
+    expect(parseMemoryQuantity('1Ti')).toBe(1024 * 1024 * 1024 * 1024);
+  });
+
   it('calculates accurate CPU and Memory utilization percentages against pod limits', async () => {
     const mockClient = new MockMetricsClient();
     const service = new MetricsService(mockClient);
@@ -84,6 +97,7 @@ describe('Observability Services and Endpoints', () => {
     const res = await request(app).get('/api/repos/payment-service/logs');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/event-stream');
+    expect(res.headers['x-accel-buffering']).toBe('no');
 
     const body = res.text;
     expect(body).toContain('event: start');

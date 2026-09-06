@@ -11,6 +11,7 @@ import { createAdminRouter } from './routes/admin.js';
 import { createReposRouter } from './routes/repos.js';
 import { createTriggersRouter } from './routes/triggers.js';
 import { createObservabilityRouter, createFleetRouter } from './routes/observability.js';
+import { createBearerAuthMiddleware } from './middleware/authGuard.js';
 import { AppConfig } from './config.js';
 
 export interface AppDependencies {
@@ -28,6 +29,9 @@ export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler)
 
   app.use(cors());
   app.use(express.json());
+
+  // Attach Bearer token authentication resolution
+  app.use(createBearerAuthMiddleware(deps.gitlabService, deps.ldapService, deps.dbManager));
 
   if (preMiddleware) {
     app.use(preMiddleware);

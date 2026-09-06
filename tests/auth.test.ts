@@ -6,7 +6,7 @@ import { MockLdapService, escapeLdapFilter } from '../src/backend/services/ldapS
 import { IGitLabService } from '../src/backend/services/gitlabService.js';
 import { createAuthRouter } from '../src/backend/routes/auth.js';
 import { createAdminRouter } from '../src/backend/routes/admin.js';
-import { requireAuth, requireOnboardedTeam } from '../src/backend/middleware/authGuard.js';
+import { requireAuth, requireOnboardedTeam, createBearerAuthMiddleware } from '../src/backend/middleware/authGuard.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -77,6 +77,7 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
 
     app = express();
     app.use(express.json());
+    app.use(createBearerAuthMiddleware(mockGitLab, mockLdap, dbManager));
 
     const authRouter = createAuthRouter(mockGitLab, mockLdap, dbManager);
     const adminRouter = createAdminRouter(dbManager, mockGitLab);
@@ -237,6 +238,94 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(escapeLdapFilter('c:\\test')).toBe('c:\\5ctest');
     expect(escapeLdapFilter('null\0byte')).toBe('null\\00byte');
     expect(escapeLdapFilter('admin*)(uid=*))(|(uid=*')).toBe('admin\\2a\\29\\28uid=\\2a\\29\\29\\28|\\28uid=\\2a');
+  });
+
+  it('authenticates API request using Bearer token without pre-existing cookie session', async () => {
+    dbManager.createTeam({
+      name: 'Platform Team',
+      ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+
+    mockLdap.setUserGroups('alice.developer', ['cn=platform-eng,ou=groups,dc=example,dc=com']);
+
+    // Direct request with Authorization header only
+    const res = await request(app)
+      .get('/api/protected/dashboard')
+      .set('Authorization', 'Bearer mock-access-token-xyz');
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.gitlabUser.username).toBe('alice.developer');
+    expect(res.body.user.activeTeams[0].name).toBe('Platform Team');
+  });
+
+  it('consumes and deletes OAuth state token after verification to prevent replay', async () => {
+    const sessionStore: Record<string, any> = { oauthState: 'one-time-state-token' };
+    const sessionApp = express();
+    sessionApp.use(express.json());
+    sessionApp.use((req, res, next) => {
+      (req as any).session = sessionStore;
+      next();
+    });
+    sessionApp.use('/api/auth', createAuthRouter(mockGitLab, mockLdap, dbManager));
+
+    dbManager.createTeam({
+      name: 'Platform Team',
+      ldap_group_dn: 'cn=platform-eng,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+    mockLdap.setUserGroups('alice.developer', ['cn=platform-eng,ou=groups,dc=example,dc=com']);
+
+    // First attempt succeeds and deletes oauthState
+    const res1 = await request(sessionApp)
+      .post('/api/auth/gitlab/callback')
+      .send({ code: 'valid-code-123', state: 'one-time-state-token' });
+    expect(res1.status).toBe(200);
+    expect(sessionStore.oauthState).toBeUndefined();
+
+    // Replay attempt with same state fails
+    sessionStore.oauthState = 'new-state-token';
+    const res2 = await request(sessionApp)
+      .post('/api/auth/gitlab/callback')
+      .send({ code: 'valid-code-123', state: 'one-time-state-token' });
+    expect(res2.status).toBe(403);
+  });
+
+  it('safely handles missing or empty body on auth callback and admin endpoints', async () => {
+    // 1. Callback without body (e.g. GET with missing code)
+    const resCallback = await request(app).get('/api/auth/gitlab/callback');
+    expect(resCallback.status).toBe(400);
+    expect(resCallback.body.error).toContain('Missing OAuth authorization code');
+
+    // 2. Admin POST with empty body
+    const resAdminEmpty = await request(app).post('/api/admin/teams').send();
+    expect(resAdminEmpty.status).toBe(400);
+  });
+
+  it('returns 409 Conflict when PUT /api/admin/teams/:id updates to an existing duplicate name or LDAP DN', async () => {
+    const team1 = dbManager.createTeam({
+      name: 'Alpha Team',
+      ldap_group_dn: 'cn=alpha,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+
+    const team2 = dbManager.createTeam({
+      name: 'Beta Team',
+      ldap_group_dn: 'cn=beta,dc=example,dc=com',
+      gitlab_group_path: 'engineering/core',
+      is_active: true,
+    });
+
+    // Attempt to rename team2 to team1's name
+    const resConflict = await request(app)
+      .put(`/api/admin/teams/${team2.id}`)
+      .send({ name: 'Alpha Team' });
+
+    expect(resConflict.status).toBe(409);
+    expect(resConflict.body.error).toContain('Failed to update team');
   });
 });
 

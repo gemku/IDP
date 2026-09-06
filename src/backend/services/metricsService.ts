@@ -10,40 +10,59 @@ export interface PodResourceUsage {
   timestamp: string;
 }
 
-export function parseCpuQuantity(cpu: string): number {
-  if (!cpu) return 0;
-  if (cpu.endsWith('m')) {
-    return parseFloat(cpu.slice(0, -1)) / 1000;
+export function parseCpuQuantity(cpu: string | number | undefined | null): number {
+  if (cpu === undefined || cpu === null || cpu === '') return 0;
+  if (typeof cpu === 'number') {
+    return Number.isFinite(cpu) ? cpu : 0;
   }
-  if (cpu.endsWith('u')) {
-    return parseFloat(cpu.slice(0, -1)) / 1000000;
+  const str = String(cpu).trim();
+  if (!str) return 0;
+  if (str.endsWith('m')) {
+    const val = parseFloat(str.slice(0, -1)) / 1000;
+    return Number.isFinite(val) ? val : 0;
   }
-  if (cpu.endsWith('n')) {
-    return parseFloat(cpu.slice(0, -1)) / 1000000000;
+  if (str.endsWith('u')) {
+    const val = parseFloat(str.slice(0, -1)) / 1000000;
+    return Number.isFinite(val) ? val : 0;
   }
-  return parseFloat(cpu);
+  if (str.endsWith('n')) {
+    const val = parseFloat(str.slice(0, -1)) / 1000000000;
+    return Number.isFinite(val) ? val : 0;
+  }
+  const val = parseFloat(str);
+  return Number.isFinite(val) ? val : 0;
 }
 
-export function parseMemoryQuantity(mem: string): number {
-  if (!mem) return 0;
+export function parseMemoryQuantity(mem: string | number | undefined | null): number {
+  if (mem === undefined || mem === null || mem === '') return 0;
+  if (typeof mem === 'number') {
+    return Number.isFinite(mem) ? mem : 0;
+  }
+  const str = String(mem).trim();
+  if (!str) return 0;
+
   const units: Record<string, number> = {
     Ki: 1024,
     Mi: 1024 * 1024,
     Gi: 1024 * 1024 * 1024,
     Ti: 1024 * 1024 * 1024 * 1024,
+    Pi: 1024 * 1024 * 1024 * 1024 * 1024,
     k: 1000,
     M: 1000 * 1000,
     G: 1000 * 1000 * 1000,
+    T: 1000 * 1000 * 1000 * 1000,
+    P: 1000 * 1000 * 1000 * 1000 * 1000,
   };
 
   for (const [unit, multiplier] of Object.entries(units)) {
-    if (mem.endsWith(unit)) {
-      const num = parseFloat(mem.slice(0, -unit.length));
-      return num * multiplier;
+    if (str.endsWith(unit)) {
+      const num = parseFloat(str.slice(0, -unit.length));
+      return Number.isFinite(num) ? num * multiplier : 0;
     }
   }
 
-  return parseFloat(mem);
+  const val = parseFloat(str);
+  return Number.isFinite(val) ? val : 0;
 }
 
 export interface IMetricsClient {

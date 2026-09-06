@@ -54,5 +54,42 @@ describe('RepositoryPicker Component Logic', () => {
 
     vi.useRealTimers();
   });
+
+  it('slices filtered projects by page in local fallback pagination', () => {
+    const generateProjects = (count: number): GitLabProject[] =>
+      Array.from({ length: count }, (_, i) => ({
+        id: i + 1,
+        name: `service-${i + 1}`,
+        path: `service-${i + 1}`,
+        path_with_namespace: `platform/service-${i + 1}`,
+        web_url: `https://gitlab.example.com/platform/service-${i + 1}`,
+        visibility: 'internal',
+      }));
+
+    const allProjects = generateProjects(25);
+    const paginate = (projects: GitLabProject[], page: number, pageSize = 10) => {
+      const totalPages = Math.ceil(projects.length / pageSize) || 1;
+      const safePage = Math.min(Math.max(1, page), totalPages);
+      const startIndex = (safePage - 1) * pageSize;
+      return {
+        sliced: projects.slice(startIndex, startIndex + pageSize),
+        totalPages,
+        safePage,
+      };
+    };
+
+    const page1 = paginate(allProjects, 1);
+    expect(page1.sliced).toHaveLength(10);
+    expect(page1.sliced[0].id).toBe(1);
+    expect(page1.totalPages).toBe(3);
+
+    const page2 = paginate(allProjects, 2);
+    expect(page2.sliced).toHaveLength(10);
+    expect(page2.sliced[0].id).toBe(11);
+
+    const page3 = paginate(allProjects, 3);
+    expect(page3.sliced).toHaveLength(5);
+    expect(page3.sliced[0].id).toBe(21);
+  });
 });
 

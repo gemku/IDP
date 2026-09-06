@@ -28,13 +28,17 @@ export function createAuthRouter(
 
   // GET or POST /api/auth/gitlab/callback
   router.all('/gitlab/callback', async (req: Request, res: Response) => {
-    const code = (req.query.code || req.body.code) as string;
-    const state = (req.query.state || req.body.state) as string;
+    const code = (req.query.code || req.body?.code) as string;
+    const state = (req.query.state || req.body?.state) as string;
     const expectedState = (req as any).session?.oauthState;
 
     if (expectedState && (!state || state !== expectedState)) {
       res.status(403).json({ error: 'OAuth state parameter verification failed (CSRF protection)' });
       return;
+    }
+
+    if (expectedState) {
+      delete (req as any).session.oauthState;
     }
 
     if (!code) {
@@ -93,7 +97,7 @@ export function createAuthRouter(
 
   // GET /api/auth/me
   router.get('/me', (req: Request, res: Response) => {
-    const sessionUser = (req as any).session?.user || (req as any).mockUser;
+    const sessionUser = (req as any).user || (req as any).session?.user || (req as any).mockUser;
     if (!sessionUser) {
       res.status(401).json({ error: 'Not authenticated' });
       return;

@@ -59,16 +59,19 @@ export const RepositoryPicker: React.FC<RepositoryPickerProps> = ({
             setIsLoading(false);
           }
         });
-    } else if (!fetchProjects && initialProjects.length > 0) {
+    } else if (!fetchProjects) {
       // Local filtering fallback
       const filtered = initialProjects.filter(
         (p) =>
           p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
           p.path_with_namespace.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
-      setProjects(filtered);
       setTotalCount(filtered.length);
-      setTotalPages(Math.ceil(filtered.length / 10) || 1);
+      const total = Math.ceil(filtered.length / 10) || 1;
+      setTotalPages(total);
+      const safePage = Math.min(Math.max(1, currentPage), total);
+      const startIndex = (safePage - 1) * 10;
+      setProjects(filtered.slice(startIndex, startIndex + 10));
     }
 
     return () => {

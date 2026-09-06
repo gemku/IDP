@@ -25,7 +25,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
       return;
     }
-    const { repoUrl, repoName, targetNamespace, tagPattern } = req.body;
+    const { repoUrl, repoName, targetNamespace, tagPattern } = req.body || {};
 
     if (!repoUrl || !repoName) {
       res.status(400).json({ error: 'Missing required fields: repoUrl, repoName' });
