@@ -1,5 +1,7 @@
 import express, { Express, RequestHandler } from 'express';
 import cors from 'cors';
+import fs from 'node:fs';
+import path from 'node:path';
 import { DatabaseManager } from './db.js';
 import { IGitLabService } from './services/gitlabService.js';
 import { ILdapService } from './services/ldapService.js';
@@ -49,6 +51,18 @@ export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler)
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  // Serve static client assets in production if built
+  const clientDist = path.resolve(process.cwd(), 'dist', 'client');
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist));
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api')) {
+        return res.sendFile(path.join(clientDist, 'index.html'));
+      }
+      next();
+    });
+  }
 
   // Global error-handling middleware
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

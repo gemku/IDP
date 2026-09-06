@@ -11,8 +11,11 @@ RUN npm ci
 
 # Copy source code and build
 COPY tsconfig.json ./
+COPY index.html ./
+COPY vite.config.mts ./
 COPY src/ ./src/
 RUN npm run build
+RUN npm run build:client
 
 # ==============================================================================
 # Stage 2: Minimal production runner
