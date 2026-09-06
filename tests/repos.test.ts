@@ -149,5 +149,13 @@ describe('Scoped Repository Picker API', () => {
     expect(res.status).toBe(200);
     expect(capturedToken).toBeUndefined();
   });
+
+  it('safely handles repeated/array query parameters without throwing TypeError', async () => {
+    const res = await request(app).get('/api/repos?search=billing&search=ignored&page=1&page=2&limit=10&limit=20');
+    expect(res.status).toBe(200);
+    expect(res.body.projects).toHaveLength(1);
+    expect(res.body.projects[0].name).toBe('billing-api');
+    expect(res.body.pagination.page).toBe(1);
+  });
 });
 

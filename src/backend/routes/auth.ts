@@ -109,6 +109,10 @@ export function createAuthRouter(
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
+    // Refresh activeTeams dynamically from dbManager to reflect real-time team status
+    if (sessionUser.ldapGroups && Array.isArray(sessionUser.ldapGroups)) {
+      sessionUser.activeTeams = dbManager.findActiveTeamsForUser(sessionUser.ldapGroups);
+    }
     res.json({ user: sessionUser });
   });
 

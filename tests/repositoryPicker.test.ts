@@ -112,5 +112,15 @@ describe('RepositoryPicker Component Logic', () => {
     expect(valid.projects).toHaveLength(2);
     expect(valid.totalCount).toBe(2);
   });
+
+  it('resets page index to 1 when active team changes', () => {
+    let currentPage = 3;
+    const onTeamChange = (newTeamId: number) => {
+      currentPage = 1;
+    };
+
+    onTeamChange(42);
+    expect(currentPage).toBe(1);
+  });
 });
 

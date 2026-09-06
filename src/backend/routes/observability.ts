@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { LogStreamingService } from '../services/logStreamingService.js';
 import { MetricsService } from '../services/metricsService.js';
 import { AuthenticatedRequest, requireOnboardedTeam } from '../middleware/authGuard.js';
+import { getStringParam } from './repos.js';
 
 export function createFleetRouter(): Router {
   const router = Router();
@@ -39,7 +40,7 @@ export function createObservabilityRouter(
       res.status(400).json({ error: 'Missing or invalid repository name' });
       return;
     }
-    const namespace = (req.query.namespace as string) || 'default';
+    const namespace = getStringParam(req.query.namespace, 'default') || 'default';
 
     await logService.streamKpackLogs(namespace, repoName, res, 5);
   });
@@ -52,8 +53,8 @@ export function createObservabilityRouter(
       res.status(400).json({ error: 'Missing or invalid repository name' });
       return;
     }
-    const namespace = (req.query.namespace as string) || 'default';
-    const podName = (req.query.podName as string) || `${repoName}-build-1-pod`;
+    const namespace = getStringParam(req.query.namespace, 'default') || 'default';
+    const podName = getStringParam(req.query.podName) || `${repoName}-build-1-pod`;
 
     try {
       const usage = await metricsService.getBuildResourceUsage(namespace, podName);

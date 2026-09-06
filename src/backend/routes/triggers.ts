@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { KroService } from '../services/kroService.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { AuthenticatedRequest, requireOnboardedTeam } from '../middleware/authGuard.js';
+import { getStringParam } from './repos.js';
 
 function parseNumericId(param: string | string[] | undefined): number | null {
   const str = Array.isArray(param) ? param[0] : param;
@@ -116,7 +117,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
       return;
     }
-    const repoName = (req.query.repoName as string)?.trim();
+    const repoName = getStringParam(req.query.repoName).trim();
     if (!repoName) {
       res.status(400).json({ error: 'Missing required query parameter: repoName' });
       return;
@@ -132,7 +133,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       return;
     }
 
-    const namespace = (req.query.namespace as string) || 'default';
+    const namespace = getStringParam(req.query.namespace, 'default') || 'default';
     const triggerName = sanitizeTriggerName(repoName);
 
     try {
@@ -150,7 +151,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
       return;
     }
-    const repoName = (req.query.repoName as string)?.trim();
+    const repoName = getStringParam(req.query.repoName).trim();
     if (!repoName) {
       res.status(400).json({ error: 'Missing required query parameter: repoName' });
       return;
@@ -166,7 +167,7 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       return;
     }
 
-    const namespace = (req.query.namespace as string) || 'default';
+    const namespace = getStringParam(req.query.namespace, 'default') || 'default';
     const triggerName = sanitizeTriggerName(repoName);
 
     try {

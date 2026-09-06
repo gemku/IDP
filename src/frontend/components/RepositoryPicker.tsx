@@ -40,6 +40,11 @@ export const RepositoryPicker: React.FC<RepositoryPickerProps> = ({
     };
   }, [searchTerm]);
 
+  // Reset pagination to page 1 on team switch
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [teamId]);
+
   // Fetch projects when debounced search or page or teamId changes
   useEffect(() => {
     let isMounted = true;

@@ -158,8 +158,12 @@ export function createAdminRouter(
     }
 
     const newStatus = existing.is_active === 1 ? false : true;
-    const updated = dbManager.updateTeam(id, { is_active: newStatus });
-    res.json({ team: updated });
+    try {
+      const updated = dbManager.updateTeam(id, { is_active: newStatus });
+      res.json({ team: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to toggle team status', details: err.message });
+    }
   });
 
   // DELETE /api/admin/teams/:id

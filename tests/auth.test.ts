@@ -451,6 +451,39 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Invalid JSON payload');
   });
+
+  it('dynamically refreshes active teams on /api/auth/me when team status changes', async () => {
+    const team = dbManager.createTeam({
+      name: 'Dynamic Team',
+      ldap_group_dn: 'cn=dynamic-team,ou=groups,dc=example,dc=com',
+      gitlab_group_path: 'engineering/platform',
+      is_active: true,
+    });
+
+    const userApp = express();
+    userApp.use((req, res, next) => {
+      (req as any).mockUser = {
+        gitlabUser: { username: 'alice.developer' },
+        ldapGroups: ['cn=dynamic-team,ou=groups,dc=example,dc=com'],
+        activeTeams: [team],
+      };
+      next();
+    });
+    userApp.use('/api/auth', createAuthRouter(mockGitLab, mockLdap, dbManager));
+
+    // Initially active
+    const res1 = await request(userApp).get('/api/auth/me');
+    expect(res1.status).toBe(200);
+    expect(res1.body.user.activeTeams).toHaveLength(1);
+
+    // Admin deactivates team in DB
+    dbManager.updateTeam(team.id, { is_active: false });
+
+    // Next /me call immediately reflects the deactivation without re-login
+    const res2 = await request(userApp).get('/api/auth/me');
+    expect(res2.status).toBe(200);
+    expect(res2.body.user.activeTeams).toHaveLength(0);
+  });
 });
 
 function res430(status: number) {

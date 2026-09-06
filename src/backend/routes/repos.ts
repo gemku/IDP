@@ -9,6 +9,13 @@ function parseNumericId(param: string | string[] | undefined): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+export function getStringParam(param: unknown, fallback = ''): string {
+  if (Array.isArray(param)) {
+    return typeof param[0] === 'string' ? param[0] : fallback;
+  }
+  return typeof param === 'string' ? param : fallback;
+}
+
 export function createReposRouter(gitlabService: IGitLabService): Router {
   const router = Router();
 
@@ -45,7 +52,7 @@ export function createReposRouter(gitlabService: IGitLabService): Router {
       const projects = await gitlabService.getGroupProjects(team.gitlab_group_path, token);
 
       // Search filter
-      const search = (req.query.search as string || '').trim().toLowerCase();
+      const search = getStringParam(req.query.search).trim().toLowerCase();
       let filtered = projects;
       if (search) {
         filtered = projects.filter(
@@ -57,10 +64,10 @@ export function createReposRouter(gitlabService: IGitLabService): Router {
       }
 
       // Pagination: safely bounded without NaN
-      const rawPage = parseInt((req.query.page as string) || '1', 10);
+      const rawPage = parseInt(getStringParam(req.query.page, '1'), 10);
       const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
-      const rawLimit = parseInt((req.query.limit as string) || '10', 10);
+      const rawLimit = parseInt(getStringParam(req.query.limit, '10'), 10);
       const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(100, rawLimit) : 10;
 
       const startIndex = (page - 1) * limit;

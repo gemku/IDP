@@ -207,5 +207,18 @@ describe('KRO Trigger Provisioning & GitLab Webhook Registration', () => {
     expect(deleteRes.status).toBe(400);
     expect(deleteRes.body.error).toContain('repoName');
   });
+
+  it('safely handles repeated/array repoName and namespace query parameters', async () => {
+    // Provision trigger first
+    await kroService.createTagTrigger('default', {
+      name: 'auth-service-trigger',
+      repoUrl: 'https://gitlab.example.com/platform/auth-service.git',
+      projectId: 123,
+    });
+
+    const res = await request(app).get('/api/repos/123/trigger?repoName=auth-service&repoName=ignored&namespace=default&namespace=ignored');
+    expect(res.status).toBe(200);
+    expect(res.body.trigger.metadata.name).toBe('auth-service-trigger');
+  });
 });
 
