@@ -10,7 +10,7 @@ import { createAuthRouter } from './routes/auth.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createReposRouter } from './routes/repos.js';
 import { createTriggersRouter } from './routes/triggers.js';
-import { createObservabilityRouter } from './routes/observability.js';
+import { createObservabilityRouter, createFleetRouter } from './routes/observability.js';
 import { AppConfig } from './config.js';
 
 export interface AppDependencies {
@@ -39,7 +39,7 @@ export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler)
   app.use('/api/repos', createReposRouter(deps.gitlabService));
   app.use('/api/repos', createTriggersRouter(deps.kroService, deps.gitlabService));
   app.use('/api/repos', createObservabilityRouter(deps.logStreamingService, deps.metricsService));
-  app.use('/api', createObservabilityRouter(deps.logStreamingService, deps.metricsService));
+  app.use('/api/fleet', createFleetRouter());
 
   // Health check
   app.get('/api/health', (req, res) => {

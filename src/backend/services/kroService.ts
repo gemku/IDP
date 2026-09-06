@@ -40,6 +40,104 @@ export interface IKubernetesCustomApi {
   ): Promise<{ body: any }>;
 }
 
+export class KubernetesCustomObjectAdapter implements IKubernetesCustomApi {
+  constructor(private rawApi: any) {}
+
+  public async createNamespacedCustomObject(
+    group: string,
+    version: string,
+    namespace: string,
+    plural: string,
+    body: object
+  ): Promise<{ body: any }> {
+    if (typeof this.rawApi.createNamespacedCustomObject === 'function') {
+      try {
+        if (this.rawApi.createNamespacedCustomObject.length <= 2) {
+          const res = await this.rawApi.createNamespacedCustomObject({
+            group,
+            version,
+            namespace,
+            plural,
+            body,
+          });
+          return { body: res.body ?? res };
+        }
+      } catch (err: any) {
+        // Fallback
+      }
+      return await this.rawApi.createNamespacedCustomObject(group, version, namespace, plural, body);
+    }
+    throw new Error('createNamespacedCustomObject is not available');
+  }
+
+  public async getNamespacedCustomObject(
+    group: string,
+    version: string,
+    namespace: string,
+    plural: string,
+    name: string
+  ): Promise<{ body: any }> {
+    if (typeof this.rawApi.getNamespacedCustomObject === 'function') {
+      if (this.rawApi.getNamespacedCustomObject.length <= 2) {
+        const res = await this.rawApi.getNamespacedCustomObject({
+          group,
+          version,
+          namespace,
+          plural,
+          name,
+        });
+        return { body: res.body ?? res };
+      }
+      return await this.rawApi.getNamespacedCustomObject(group, version, namespace, plural, name);
+    }
+    throw new Error('getNamespacedCustomObject is not available');
+  }
+
+  public async deleteNamespacedCustomObject(
+    group: string,
+    version: string,
+    namespace: string,
+    plural: string,
+    name: string
+  ): Promise<{ body: any }> {
+    if (typeof this.rawApi.deleteNamespacedCustomObject === 'function') {
+      if (this.rawApi.deleteNamespacedCustomObject.length <= 2) {
+        const res = await this.rawApi.deleteNamespacedCustomObject({
+          group,
+          version,
+          namespace,
+          plural,
+          name,
+        });
+        return { body: res.body ?? res };
+      }
+      return await this.rawApi.deleteNamespacedCustomObject(group, version, namespace, plural, name);
+    }
+    throw new Error('deleteNamespacedCustomObject is not available');
+  }
+
+  public async listNamespacedCustomObject(
+    group: string,
+    version: string,
+    namespace: string,
+    plural: string
+  ): Promise<{ body: any }> {
+    if (typeof this.rawApi.listNamespacedCustomObject === 'function') {
+      if (this.rawApi.listNamespacedCustomObject.length <= 2) {
+        const res = await this.rawApi.listNamespacedCustomObject({
+          group,
+          version,
+          namespace,
+          plural,
+        });
+        return { body: res.body ?? res };
+      }
+      return await this.rawApi.listNamespacedCustomObject(group, version, namespace, plural);
+    }
+    throw new Error('listNamespacedCustomObject is not available');
+  }
+}
+
 export class KroService {
   private customApi: IKubernetesCustomApi;
   private group = 'kro.run';
@@ -58,7 +156,8 @@ export class KroService {
       } else {
         kc.loadFromDefault();
       }
-      this.customApi = kc.makeApiClient(k8s.CustomObjectsApi);
+      const rawApi = kc.makeApiClient(k8s.CustomObjectsApi);
+      this.customApi = new KubernetesCustomObjectAdapter(rawApi);
     }
   }
 

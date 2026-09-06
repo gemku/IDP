@@ -206,6 +206,11 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     const resDelete = await request(app).delete(`/api/admin/teams/${teamId}`);
     expect(resDelete.status).toBe(200);
     expect(resDelete.body.success).toBe(true);
+
+    // 5. Reject invalid non-numeric ID
+    const resInvalidId = await request(app).get('/api/admin/teams/invalid-id');
+    expect(resInvalidId.status).toBe(400);
+    expect(resInvalidId.body.error).toContain('numeric identifier');
   });
 });
 

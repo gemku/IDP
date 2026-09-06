@@ -3,6 +3,13 @@ import { DatabaseManager } from '../db.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { CreateTeamDTO, UpdateTeamDTO } from '../../types/models.js';
 
+function parseNumericId(param: string | string[] | undefined): number | null {
+  const str = Array.isArray(param) ? param[0] : param;
+  if (!str) return null;
+  const num = parseInt(str, 10);
+  return Number.isNaN(num) ? null : num;
+}
+
 export function createAdminRouter(
   dbManager: DatabaseManager,
   gitlabService: IGitLabService
@@ -18,7 +25,11 @@ export function createAdminRouter(
 
   // GET /api/admin/teams/:id
   router.get('/teams/:id', (req: Request, res: Response) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
+      return;
+    }
     const team = dbManager.getTeamById(id);
     if (!team) {
       res.status(404).json({ error: 'Team not found' });
@@ -62,7 +73,11 @@ export function createAdminRouter(
 
   // PUT /api/admin/teams/:id
   router.put('/teams/:id', async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
+      return;
+    }
     const existing = dbManager.getTeamById(id);
     if (!existing) {
       res.status(404).json({ error: 'Team not found' });
@@ -96,7 +111,11 @@ export function createAdminRouter(
 
   // PATCH /api/admin/teams/:id/toggle
   router.patch('/teams/:id/toggle', (req: Request, res: Response) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
+      return;
+    }
     const existing = dbManager.getTeamById(id);
     if (!existing) {
       res.status(404).json({ error: 'Team not found' });
@@ -110,7 +129,11 @@ export function createAdminRouter(
 
   // DELETE /api/admin/teams/:id
   router.delete('/teams/:id', (req: Request, res: Response) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseNumericId(req.params.id);
+    if (id === null) {
+      res.status(400).json({ error: 'Invalid ID: must be a numeric identifier' });
+      return;
+    }
     const success = dbManager.deleteTeam(id);
     if (!success) {
       res.status(404).json({ error: 'Team not found' });

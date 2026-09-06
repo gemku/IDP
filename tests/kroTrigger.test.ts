@@ -141,5 +141,15 @@ describe('KRO Trigger Provisioning & GitLab Webhook Registration', () => {
     expect(mockGitLab.registeredHooks).toHaveLength(1);
     expect(mockGitLab.registeredHooks[0].webhookUrl).toContain('tenant-team-a');
   });
+
+  it('rejects trigger provision requests with non-numeric project IDs', async () => {
+    const res = await request(app).post('/api/repos/not-a-number/trigger').send({
+      repoUrl: 'https://gitlab.example.com/platform/auth-service.git',
+      repoName: 'auth-service',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('numeric identifier');
+  });
 });
 

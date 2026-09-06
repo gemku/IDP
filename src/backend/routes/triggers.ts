@@ -3,12 +3,23 @@ import { KroService } from '../services/kroService.js';
 import { IGitLabService } from '../services/gitlabService.js';
 import { AuthenticatedRequest, requireOnboardedTeam } from '../middleware/authGuard.js';
 
+function parseNumericId(param: string | string[] | undefined): number | null {
+  const str = Array.isArray(param) ? param[0] : param;
+  if (!str) return null;
+  const num = parseInt(str, 10);
+  return Number.isNaN(num) ? null : num;
+}
+
 export function createTriggersRouter(kroService: KroService, gitlabService: IGitLabService): Router {
   const router = Router();
 
   // POST /api/repos/:projectId/trigger
   router.post('/:projectId/trigger', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
-    const projectId = parseInt(req.params.projectId, 10);
+    const projectId = parseNumericId(req.params.projectId);
+    if (projectId === null) {
+      res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
+      return;
+    }
     const { repoUrl, repoName, targetNamespace, tagPattern } = req.body;
 
     if (!repoUrl || !repoName) {
@@ -56,6 +67,11 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
 
   // GET /api/repos/:projectId/trigger
   router.get('/:projectId/trigger', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
+    const projectId = parseNumericId(req.params.projectId);
+    if (projectId === null) {
+      res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
+      return;
+    }
     const repoName = (req.query.repoName as string) || '';
     const namespace = (req.query.namespace as string) || 'default';
     const triggerName = `${repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-trigger`;
@@ -70,6 +86,11 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
 
   // DELETE /api/repos/:projectId/trigger
   router.delete('/:projectId/trigger', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
+    const projectId = parseNumericId(req.params.projectId);
+    if (projectId === null) {
+      res.status(400).json({ error: 'Invalid project ID: must be a numeric identifier' });
+      return;
+    }
     const repoName = (req.query.repoName as string) || '';
     const namespace = (req.query.namespace as string) || 'default';
     const triggerName = `${repoName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-trigger`;

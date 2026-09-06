@@ -16,6 +16,11 @@ spec:
             type: string
             value:
               - "refs/tags/.*"
+          - path: body.after
+            type: string
+            comparator: "!="
+            value:
+              - "0000000000000000000000000000000000000000"
   triggers:
     - template:
         name: trigger-kpack-build-workflow

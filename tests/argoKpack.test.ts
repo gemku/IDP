@@ -10,6 +10,8 @@ describe('Argo Events, Workflows & Kpack Build Pipeline Scaffolding', () => {
 
     expect(content).toContain('kind: Sensor');
     expect(content).toContain('refs/tags/.*');
+    expect(content).toContain('body.after');
+    expect(content).toContain('0000000000000000000000000000000000000000');
     expect(content).toContain('trimPrefix "refs/tags/"');
     expect(content).toContain('kpack-build-pipeline-template');
   });

@@ -51,7 +51,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (!ldapBindDn) missing.push('LDAP_BIND_DN');
   if (!ldapBindPassword) missing.push('LDAP_BIND_PASSWORD');
 
-  if (missing.length > 0) {
+  if (!gitlabClientId || !gitlabClientSecret || !ldapBindDn || !ldapBindPassword) {
     throw new ConfigValidationError(missing);
   }
 

@@ -11,7 +11,7 @@ import {
   LogStreamingService,
   MockLogSource,
 } from '../src/backend/services/logStreamingService.js';
-import { createObservabilityRouter } from '../src/backend/routes/observability.js';
+import { createObservabilityRouter, createFleetRouter } from '../src/backend/routes/observability.js';
 
 class MockMetricsClient implements IMetricsClient {
   public async getPodMetrics(namespace: string, podName: string) {
@@ -110,6 +110,7 @@ describe('Observability Services and Endpoints', () => {
     });
 
     app.use('/api/repos', createObservabilityRouter(logService, metricsService));
+    app.use('/api/fleet', createFleetRouter());
 
     const statusRes = await request(app).get('/api/repos/payment-service/pipeline-status');
     expect(statusRes.status).toBe(200);
@@ -118,6 +119,29 @@ describe('Observability Services and Endpoints', () => {
     expect(statusRes.body.steps[1].id).toBe('eventsource');
     expect(statusRes.body.steps[2].id).toBe('workflow');
     expect(statusRes.body.steps[3].id).toBe('kpack');
+
+    const fleetRes = await request(app).get('/api/fleet/health');
+    expect(fleetRes.status).toBe(200);
+    expect(fleetRes.body.fleetHealth).toBe('healthy');
+    expect(fleetRes.body.teamsActivity).toBeInstanceOf(Array);
+  });
+
+  it('aborts log streaming cleanly when client disconnects', async () => {
+    const mockLogSource = new MockLogSource();
+    const logService = new LogStreamingService(mockLogSource);
+
+    const EventEmitter = (await import('node:events')).EventEmitter;
+    const fakeRes: any = new EventEmitter();
+    fakeRes.setHeader = () => {};
+    fakeRes.write = () => true;
+    fakeRes.end = () => {};
+    fakeRes.writableEnded = false;
+
+    // Trigger close immediately after start
+    const streamPromise = logService.streamKpackLogs('default', 'test-repo', fakeRes, 50);
+    fakeRes.emit('close');
+
+    await expect(streamPromise).resolves.toBeUndefined();
   });
 });
 

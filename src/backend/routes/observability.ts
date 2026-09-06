@@ -3,36 +3,11 @@ import { LogStreamingService } from '../services/logStreamingService.js';
 import { MetricsService } from '../services/metricsService.js';
 import { AuthenticatedRequest, requireOnboardedTeam } from '../middleware/authGuard.js';
 
-export function createObservabilityRouter(
-  logService: LogStreamingService,
-  metricsService: MetricsService
-): Router {
+export function createFleetRouter(): Router {
   const router = Router();
 
-  // GET /api/repos/:repoName/logs (SSE Stream)
-  router.get('/:repoName/logs', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
-    const { repoName } = req.params;
-    const namespace = (req.query.namespace as string) || 'default';
-
-    await logService.streamKpackLogs(namespace, repoName, res, 5);
-  });
-
-  // GET /api/repos/:repoName/metrics
-  router.get('/:repoName/metrics', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
-    const { repoName } = req.params;
-    const namespace = (req.query.namespace as string) || 'default';
-    const podName = (req.query.podName as string) || `${repoName}-build-1-pod`;
-
-    try {
-      const usage = await metricsService.getBuildResourceUsage(namespace, podName);
-      res.json(usage);
-    } catch (err: any) {
-      res.status(500).json({ error: 'Failed to retrieve pod metrics', message: err.message });
-    }
-  });
-
   // GET /api/fleet/health - Aggregated Fleet Health
-  router.get('/fleet/health', requireOnboardedTeam, (req: AuthenticatedRequest, res: Response) => {
+  router.get('/health', requireOnboardedTeam, (req: AuthenticatedRequest, res: Response) => {
     res.json({
       timestamp: new Date().toISOString(),
       fleetHealth: 'healthy',
@@ -47,9 +22,40 @@ export function createObservabilityRouter(
     });
   });
 
+  return router;
+}
+
+export function createObservabilityRouter(
+  logService: LogStreamingService,
+  metricsService: MetricsService
+): Router {
+  const router = Router();
+
+  // GET /api/repos/:repoName/logs (SSE Stream)
+  router.get('/:repoName/logs', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
+    const repoName = (Array.isArray(req.params.repoName) ? req.params.repoName[0] : req.params.repoName) || '';
+    const namespace = (req.query.namespace as string) || 'default';
+
+    await logService.streamKpackLogs(namespace, repoName, res, 5);
+  });
+
+  // GET /api/repos/:repoName/metrics
+  router.get('/:repoName/metrics', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
+    const repoName = (Array.isArray(req.params.repoName) ? req.params.repoName[0] : req.params.repoName) || '';
+    const namespace = (req.query.namespace as string) || 'default';
+    const podName = (req.query.podName as string) || `${repoName}-build-1-pod`;
+
+    try {
+      const usage = await metricsService.getBuildResourceUsage(namespace, podName);
+      res.json(usage);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to retrieve pod metrics', message: err.message });
+    }
+  });
+
   // GET /api/repos/:repoName/pipeline-status
   router.get('/:repoName/pipeline-status', requireOnboardedTeam, (req: AuthenticatedRequest, res: Response) => {
-    const { repoName } = req.params;
+    const repoName = (Array.isArray(req.params.repoName) ? req.params.repoName[0] : req.params.repoName) || '';
     res.json({
       repoName,
       steps: [

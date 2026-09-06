@@ -77,26 +77,44 @@ export class LogStreamingService {
       return;
     }
 
+    let isAborted = false;
+    const onClose = () => {
+      isAborted = true;
+    };
+    res.on('close', onClose);
+
     res.write(`event: start\ndata: ${JSON.stringify({ podName, repoName, namespace })}\n\n`);
 
     try {
       for (const phase of this.phases) {
+        if (isAborted) break;
         res.write(`event: phase\ndata: ${JSON.stringify({ phase })}\n\n`);
 
         await this.logSource.streamInitContainerLogs(namespace, podName, phase, (line) => {
-          res.write(`data: ${JSON.stringify({ phase, line, timestamp: new Date().toISOString() })}\n\n`);
+          if (!isAborted) {
+            res.write(`data: ${JSON.stringify({ phase, line, timestamp: new Date().toISOString() })}\n\n`);
+          }
         });
+
+        if (isAborted) break;
 
         if (delayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
       }
 
-      res.write(`event: complete\ndata: ${JSON.stringify({ status: 'succeeded', completedAt: new Date().toISOString() })}\n\n`);
+      if (!isAborted) {
+        res.write(`event: complete\ndata: ${JSON.stringify({ status: 'succeeded', completedAt: new Date().toISOString() })}\n\n`);
+      }
     } catch (err: any) {
-      res.write(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`);
+      if (!isAborted) {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: err.message })}\n\n`);
+      }
     } finally {
-      res.end();
+      res.removeListener('close', onClose);
+      if (!res.writableEnded) {
+        res.end();
+      }
     }
   }
 }
