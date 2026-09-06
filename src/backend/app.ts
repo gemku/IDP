@@ -47,9 +47,86 @@ export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler)
   app.use('/api/repos', createObservabilityRouter(deps.logStreamingService, deps.metricsService));
   app.use('/api/fleet', createFleetRouter());
 
-  // Health check
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  // Health & Lifecycle Probes
+  // Liveness probe: verifies process is alive and responsive
+  app.get('/api/health/live', (req, res) => {
+    res.status(200).json({ status: 'ok', check: 'liveness', timestamp: new Date().toISOString() });
+  });
+
+  // Readiness probe: verifies database connectivity and platform readiness
+  app.get('/api/health/ready', async (req, res) => {
+    try {
+      const dbHealth = await deps.dbManager.checkHealth();
+      if (dbHealth.healthy) {
+        res.status(200).json({
+          status: 'ok',
+          check: 'readiness',
+          database: { healthy: true, latencyMs: dbHealth.latencyMs },
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        res.status(503).json({
+          status: 'unhealthy',
+          check: 'readiness',
+          database: { healthy: false, latencyMs: dbHealth.latencyMs, error: dbHealth.error },
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (err: any) {
+      res.status(503).json({
+        status: 'unhealthy',
+        check: 'readiness',
+        database: { healthy: false, error: err.message || 'Health probe failed' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Root health endpoint: deep readiness by default, supports ?probe=live
+  app.get('/api/health', async (req, res) => {
+    if (req.query.probe === 'live' || req.query.type === 'live') {
+      res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+      return;
+    }
+
+    try {
+      const dbHealth = await deps.dbManager.checkHealth();
+      if (dbHealth.healthy) {
+        res.status(200).json({
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          components: {
+            database: {
+              status: 'up',
+              latencyMs: dbHealth.latencyMs,
+            },
+          },
+        });
+      } else {
+        res.status(503).json({
+          status: 'unhealthy',
+          timestamp: new Date().toISOString(),
+          components: {
+            database: {
+              status: 'down',
+              latencyMs: dbHealth.latencyMs,
+              error: dbHealth.error,
+            },
+          },
+        });
+      }
+    } catch (err: any) {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        components: {
+          database: {
+            status: 'down',
+            error: err.message || 'Health probe check failed',
+          },
+        },
+      });
+    }
   });
 
   // Serve static client assets in production if built

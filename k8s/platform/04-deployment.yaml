@@ -41,7 +41,7 @@ spec:
               mountPath: /app/data
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /api/health/ready
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -49,7 +49,7 @@ spec:
             failureThreshold: 3
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /api/health/live
               port: 3000
             initialDelaySeconds: 15
             periodSeconds: 20

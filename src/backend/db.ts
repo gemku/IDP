@@ -5,6 +5,12 @@ import pg from 'pg';
 import { OnboardedTeam, CreateTeamDTO, UpdateTeamDTO } from '../types/models.js';
 import { DatabaseConfig } from './config.js';
 
+export interface DatabaseHealthResult {
+  healthy: boolean;
+  latencyMs: number;
+  error?: string;
+}
+
 export interface IDatabaseManager {
   initialize(): Promise<void>;
   createTeam(dto: CreateTeamDTO): Promise<OnboardedTeam>;
@@ -14,6 +20,7 @@ export interface IDatabaseManager {
   updateTeam(id: number, dto: UpdateTeamDTO): Promise<OnboardedTeam | undefined>;
   deleteTeam(id: number): Promise<boolean>;
   findActiveTeamsForUser(userLdapGroupDns: string[]): Promise<OnboardedTeam[]>;
+  checkHealth(): Promise<DatabaseHealthResult>;
   close(): Promise<void>;
 }
 
@@ -154,6 +161,19 @@ export class SqliteDatabaseManager implements IDatabaseManager {
 
   public async findActiveTeamsForUser(userLdapGroupDns: string[]): Promise<OnboardedTeam[]> {
     return this.findActiveTeamsForUserSync(userLdapGroupDns);
+  }
+
+  public async checkHealth(): Promise<DatabaseHealthResult> {
+    const start = performance.now();
+    try {
+      const stmt = this.db.prepare('SELECT 1 as alive');
+      stmt.get();
+      const latencyMs = Math.round((performance.now() - start) * 100) / 100;
+      return { healthy: true, latencyMs };
+    } catch (err: any) {
+      const latencyMs = Math.round((performance.now() - start) * 100) / 100;
+      return { healthy: false, latencyMs, error: err.message || 'SQLite probe failed' };
+    }
   }
 
   public closeSync(): void {
@@ -317,6 +337,18 @@ export class PostgresDatabaseManager implements IDatabaseManager {
     }));
   }
 
+  public async checkHealth(): Promise<DatabaseHealthResult> {
+    const start = performance.now();
+    try {
+      await this.pool.query('SELECT 1 as alive');
+      const latencyMs = Math.round((performance.now() - start) * 100) / 100;
+      return { healthy: true, latencyMs };
+    } catch (err: any) {
+      const latencyMs = Math.round((performance.now() - start) * 100) / 100;
+      return { healthy: false, latencyMs, error: err.message || 'PostgreSQL probe failed' };
+    }
+  }
+
   public async close(): Promise<void> {
     await this.pool.end();
   }
@@ -442,6 +474,10 @@ export class DatabaseManager implements IDatabaseManager {
 
   public async findActiveTeamsForUser(userLdapGroupDns: string[]): Promise<OnboardedTeam[]> {
     return this.provider.findActiveTeamsForUser(userLdapGroupDns);
+  }
+
+  public async checkHealth(): Promise<DatabaseHealthResult> {
+    return this.provider.checkHealth();
   }
 
   public closeSync(): void {

@@ -42,30 +42,43 @@ export function startServer() {
     console.log(`Internal Developer Platform listening on port ${config.server.port}`);
   });
 
-  server.on('error', (err: any) => {
+  server.on('error', async (err: any) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`Port ${config.server.port} is already in use. Please terminate existing processes or configure another port.`);
     } else {
       console.error(`HTTP Server encountered an error: ${err.message}`);
     }
-    dbManager.close();
+    try {
+      await dbManager.close();
+    } catch (closeErr: any) {
+      console.error(`Error closing database on server error: ${closeErr.message}`);
+    }
     process.exit(1);
   });
 
-  const gracefulShutdown = (signal: string) => {
+  const gracefulShutdown = async (signal: string) => {
     console.log(`Received ${signal}, closing server gracefully...`);
-    server.close(() => {
-      console.log('HTTP server closed.');
-      dbManager.close();
-      console.log('Database connection closed.');
-      process.exit(0);
-    });
 
     // Force close after 5 seconds if still pending
-    setTimeout(() => {
+    const forceTimeout = setTimeout(() => {
       console.error('Forcefully terminating process after timeout.');
       process.exit(1);
     }, 5000);
+    if (typeof forceTimeout.unref === 'function') {
+      forceTimeout.unref();
+    }
+
+    server.close(async () => {
+      console.log('HTTP server closed.');
+      try {
+        await dbManager.close();
+        console.log('Database connection closed.');
+      } catch (err: any) {
+        console.error(`Error closing database during shutdown: ${err.message}`);
+      }
+      clearTimeout(forceTimeout);
+      process.exit(0);
+    });
   };
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

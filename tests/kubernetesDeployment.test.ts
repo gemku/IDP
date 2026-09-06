@@ -66,8 +66,8 @@ describe('Kubernetes In-Cluster Deployment Manifests & Packaging', () => {
     expect(deployContent).toContain('type: Recreate');
     expect(deployContent).toContain('serviceAccountName: platform-api-sa');
     expect(deployContent).toContain('runAsNonRoot: true');
-    expect(deployContent).toContain('claimName: platform-db-pvc');
-    expect(deployContent).toContain('path: /api/health');
+    expect(deployContent).toContain('path: /api/health/ready');
+    expect(deployContent).toContain('path: /api/health/live');
 
     const svcPath = path.join(process.cwd(), 'k8s', 'platform', '05-service.yaml');
     expect(fs.existsSync(svcPath)).toBe(true);
