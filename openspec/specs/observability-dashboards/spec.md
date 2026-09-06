@@ -25,7 +25,7 @@ The frontend SHALL render an Individual Repository Dashboard showing real-time 4
 - **THEN** the UI displays four sequential milestone badges showing current state (Pending, Running, Succeeded, or Failed) with corresponding timestamp and latency details
 
 ### Requirement: Real-Time Resource Utilization Gauges
-The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, and transmitting values to frontend radial gauges.
+The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, and falling back to pod resource limits when the metrics server is unavailable without failing the dashboard view.
 
 #### Scenario: Monitoring active build resource consumption
 - **WHEN** a Kpack build pod is actively executing

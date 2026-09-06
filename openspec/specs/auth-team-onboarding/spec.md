@@ -34,7 +34,7 @@ The platform authentication service SHALL execute the OAuth 2.0 Authorization Co
 - **THEN** the endpoint safely inspects query parameters without raising unhandled property access exceptions
 
 ### Requirement: Backend LDAP Group Resolution
-The backend service SHALL use `ldapjs` to directly bind to the LDAP directory and query the authenticated user's `memberOf` attributes, sanitizing search assertion values against LDAP injection per RFC 4515.
+The backend service SHALL use `ldapjs` to directly bind to the LDAP directory and query the authenticated user's `memberOf` attributes, sanitizing search assertion values against LDAP injection per RFC 4515, and returning HTTP 503 Service Unavailable when the directory service cannot be reached.
 
 #### Scenario: Successfully query user LDAP groups
 - **WHEN** an authenticated user establishes a session
@@ -64,7 +64,7 @@ The platform SHALL cross-reference the user's resolved LDAP group DNs against th
 - **THEN** the database query evaluates the match using `COLLATE NOCASE` and correctly authorizes the user
 
 ### Requirement: Admin Team Onboarding Management
-The platform SHALL provide an Admin UI allowing platform administrators to create, read, update, delete, and toggle the active status of records in `onboarded_teams`, validate `gitlab_group_path` values against the GitLab API, strictly validate numeric identifier route parameters, safely handle missing request bodies, and reject duplicate team updates with conflict errors.
+The platform SHALL provide an Admin UI allowing authenticated platform administrators to create, read, update, delete, and toggle the active status of records in `onboarded_teams`, validate `gitlab_group_path` values against the GitLab API, strictly validate numeric identifier route parameters, safely handle missing request bodies, and reject duplicate team updates with conflict errors.
 
 #### Scenario: Administrator adds and validates a new team
 - **WHEN** an administrator submits a new team with name, LDAP group DN, and GitLab group path
@@ -85,3 +85,7 @@ The platform SHALL provide an Admin UI allowing platform administrators to creat
 #### Scenario: Request body missing or empty on admin mutation endpoints
 - **WHEN** an admin request is received without a payload or with non-JSON Content-Type
 - **THEN** the endpoint rejects the request with a 400 Bad Request error without raising unhandled destructuring exceptions
+
+#### Scenario: Unauthenticated request to admin endpoints rejected
+- **WHEN** an unauthenticated client sends a request to any `/api/admin/*` endpoint
+- **THEN** the backend rejects the request with a 401 Unauthorized status
