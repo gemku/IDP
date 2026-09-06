@@ -48,7 +48,7 @@ The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`m
 - **THEN** the backend clamps CPU and memory percentage values strictly within the range of 0 to 100 percent inclusive
 
 ### Requirement: Live Terminal Build Log Streaming via SSE
-The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, strictly validating repository names, setting reverse-proxy unbuffering headers, cleanly aborting when clients disconnect, displaying custom server-sent error event descriptions in the terminal log, and bounding log line capacity in the UI to prevent browser memory exhaustion.
+The backend SHALL expose an SSE endpoint (`/api/repos/:repoName/logs`) tailing Kpack build initContainer logs (`detect`, `build`, `export`) to a dark-mode terminal component. It SHALL validate repository names, extract query parameters safely, set unbuffering headers, handle disconnects cleanly, render custom error events, and bound log buffer capacity.
 
 #### Scenario: User streams live build logs
 - **WHEN** a user opens the log viewer for an active build
@@ -81,3 +81,7 @@ The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoN
 #### Scenario: Terminal log buffer bounded to prevent memory exhaustion
 - **WHEN** an active build stream emits extensive log lines
 - **THEN** the dark terminal component limits its in-memory log buffer to the most recent entries, preventing tab memory exhaustion
+
+#### Scenario: Multi-value query parameters handled safely on observability routes
+- **WHEN** a client submits repeated query parameters (e.g. `?namespace=a&namespace=b`)
+- **THEN** the backend extracts the first string safely without throwing unhandled runtime type errors

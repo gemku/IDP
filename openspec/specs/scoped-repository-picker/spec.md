@@ -7,7 +7,7 @@ Restricts repository discovery strictly to the user's onboarded GitLab group hie
 ## Requirements
 
 ### Requirement: Scoped Group Project Discovery
-The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/groups/:id/projects?include_subgroups=true&membership=true` using the group ID corresponding to the user's onboarded team, falling back to the configured system administrator token when no user token is provided, strictly validating numeric query parameters, and preventing access to out-of-scope repositories.
+The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/groups/:id/projects?include_subgroups=true&membership=true` using the group ID corresponding to the user's onboarded team, falling back to the configured system administrator token when no user token is provided, strictly validating numeric query parameters, safely handling array-polluted query parameters, and preventing access to out-of-scope repositories.
 
 #### Scenario: User queries repositories for their onboarded team
 - **WHEN** a user navigates to the repository selection view
@@ -33,8 +33,12 @@ The platform backend SHALL query the GitLab REST API endpoint `GET /api/v4/group
 - **WHEN** a repository query is initiated without an active user OAuth token
 - **THEN** the service uses the configured system `adminToken` to authenticate against the GitLab API
 
+#### Scenario: Multi-value search query parameter handled safely
+- **WHEN** a client submits multiple `search` query parameters (e.g., `?search=foo&search=bar`)
+- **THEN** the backend extracts the first string search term safely without throwing runtime type errors
+
 ### Requirement: Interactive Repository Picker Component
-The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, repository visibility badges (public, internal, private), and defensive fallbacks when remote fetches return undefined collections.
+The frontend SHALL render a React + Tailwind CSS repository picker component featuring debounced search input, server-side and client-side pagination, repository visibility badges (public, internal, private), resetting pagination index when the team selection changes, and defensive fallbacks when remote fetches return undefined collections.
 
 #### Scenario: User filters repositories by name
 - **WHEN** the user types characters into the search bar
@@ -51,3 +55,7 @@ The frontend SHALL render a React + Tailwind CSS repository picker component fea
 #### Scenario: Remote fetcher returns undefined or empty project collection
 - **WHEN** the `fetchProjects` callback resolves with an empty or missing `projects` field
 - **THEN** the component safely defaults to an empty project array without raising unhandled property access errors
+
+#### Scenario: Pagination resets to page 1 upon team selection change
+- **WHEN** the `teamId` prop changes to a different team
+- **THEN** the component resets `currentPage` to 1 to avoid requesting invalid page offsets
