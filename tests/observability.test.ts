@@ -201,5 +201,49 @@ describe('Observability Services and Endpoints', () => {
 
     await expect(streamPromise).resolves.toBeUndefined();
   });
+
+  it('rejects empty or whitespace-only repository names on observability endpoints with 400', async () => {
+    const mockLogSource = new MockLogSource();
+    const logService = new LogStreamingService(mockLogSource);
+    const metricsService = new MetricsService(new MockMetricsClient());
+
+    const app = express();
+    app.use((req, res, next) => {
+      (req as any).mockUser = {
+        gitlabUser: { username: 'alice' },
+        activeTeams: [{ id: 1, name: 'Platform' }],
+      };
+      next();
+    });
+    app.use('/api/repos', createObservabilityRouter(logService, metricsService));
+
+    const resLogs = await request(app).get('/api/repos/%20%20/logs');
+    expect(resLogs.status).toBe(400);
+    expect(resLogs.body.error).toContain('Missing or invalid repository name');
+
+    const resMetrics = await request(app).get('/api/repos/%20%20/metrics');
+    expect(resMetrics.status).toBe(400);
+    expect(resMetrics.body.error).toContain('Missing or invalid repository name');
+
+    const resStatus = await request(app).get('/api/repos/%20%20/pipeline-status');
+    expect(resStatus.status).toBe(400);
+    expect(resStatus.body.error).toContain('Missing or invalid repository name');
+  });
+
+  it('clamps calculated resource percentages between 0 and 100', async () => {
+    const anomalousClient: IMetricsClient = {
+      getPodMetrics: async () => ({
+        containers: [
+          { name: 'build', usage: { cpu: '10', memory: '10Gi' } }, // Way above limit
+        ],
+      }),
+      getPodLimits: async () => ({ cpuLimit: '1', memLimit: '1Gi' }),
+    };
+    const service = new MetricsService(anomalousClient);
+    const usage = await service.getBuildResourceUsage('default', 'heavy-pod');
+
+    expect(usage.cpuPercent).toBe(100);
+    expect(usage.memoryPercent).toBe(100);
+  });
 });
 

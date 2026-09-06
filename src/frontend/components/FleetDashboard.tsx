@@ -14,7 +14,18 @@ export interface FleetStats {
   }>;
 }
 
-export const FleetDashboard: React.FC<{ stats: FleetStats }> = ({ stats }) => {
+export const FleetDashboard: React.FC<{ stats?: FleetStats }> = ({ stats }) => {
+  if (!stats) {
+    return (
+      <div className="w-full max-w-6xl p-8 bg-slate-950 text-slate-400 rounded-2xl border border-slate-800 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full" />
+          <span className="text-sm font-medium">Loading fleet telemetry...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-6xl space-y-6 bg-slate-950 text-slate-100 p-6 rounded-2xl border border-slate-800 shadow-2xl">
       {/* Header */}

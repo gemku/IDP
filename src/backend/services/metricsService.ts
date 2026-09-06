@@ -92,8 +92,8 @@ export class MetricsService {
     const cpuLimitCores = Math.max(0.1, parseCpuQuantity(limits?.cpuLimit || '2'));
     const memoryLimitBytes = Math.max(1024 * 1024, parseMemoryQuantity(limits?.memLimit || '4Gi'));
 
-    const cpuPercent = Math.min(100, Math.round((totalCpuUsed / cpuLimitCores) * 100));
-    const memoryPercent = Math.min(100, Math.round((totalMemUsed / memoryLimitBytes) * 100));
+    const cpuPercent = Math.min(100, Math.max(0, Math.round((totalCpuUsed / cpuLimitCores) * 100)));
+    const memoryPercent = Math.min(100, Math.max(0, Math.round((totalMemUsed / memoryLimitBytes) * 100)));
 
     return {
       podName,

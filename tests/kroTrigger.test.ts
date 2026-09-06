@@ -188,6 +188,14 @@ describe('KRO Trigger Provisioning & GitLab Webhook Registration', () => {
     expect(res.body.message).toContain('Project 999 does not belong to any of your active onboarded teams');
   });
 
+  it('rejects trigger retrieval with 403 Forbidden when project is outside user active teams', async () => {
+    const res = await request(app).get('/api/repos/999/trigger?repoName=secret-service');
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('Forbidden');
+    expect(res.body.message).toContain('Project 999 does not belong to any of your active onboarded teams');
+  });
+
   it('requires non-empty repoName query parameter on trigger GET and DELETE routes', async () => {
     // GET without repoName
     const getRes = await request(app).get('/api/repos/123/trigger');

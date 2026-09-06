@@ -6,6 +6,7 @@ export interface ILdapService {
 }
 
 export function escapeLdapFilter(input: string): string {
+  if (!input || typeof input !== 'string') return '';
   return input.replace(/[\\*()\0]/g, (char) => {
     switch (char) {
       case '\\':

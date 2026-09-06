@@ -48,7 +48,7 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
         setLogs((prev) => [
           ...prev,
           { phase: 'system', line: `[SYSTEM] Connected to build pod: ${data.podName}`, timestamp: new Date().toISOString() },
-        ]);
+        ].slice(-2000));
       } catch {
         updatePhase('detect');
       }
@@ -61,19 +61,19 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
         setLogs((prev) => [
           ...prev,
           { phase: data.phase, line: `--- PHASE: ${data.phase.toUpperCase()} ---`, timestamp: new Date().toISOString() },
-        ]);
+        ].slice(-2000));
       } catch {}
     });
 
     eventSource.onmessage = (e) => {
       try {
         const item = JSON.parse(e.data);
-        setLogs((prev) => [...prev, item]);
+        setLogs((prev) => [...prev, item].slice(-2000));
       } catch {
         setLogs((prev) => [
           ...prev,
           { phase: currentPhaseRef.current, line: e.data, timestamp: new Date().toISOString() },
-        ]);
+        ].slice(-2000));
       }
     };
 
@@ -91,12 +91,12 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
           setLogs((prev) => [
             ...prev,
             { phase: 'system', line: `[ERROR] ${msg}`, timestamp: new Date().toISOString() },
-          ]);
+          ].slice(-2000));
         } catch {
           setLogs((prev) => [
             ...prev,
             { phase: 'system', line: `[ERROR] ${e.data}`, timestamp: new Date().toISOString() },
-          ]);
+          ].slice(-2000));
         }
       }
       setIsConnected(false);

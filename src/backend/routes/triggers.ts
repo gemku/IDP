@@ -121,6 +121,17 @@ export function createTriggersRouter(kroService: KroService, gitlabService: IGit
       res.status(400).json({ error: 'Missing required query parameter: repoName' });
       return;
     }
+
+    const token = (req as any).session?.accessToken || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    const isAuthorized = await verifyProjectAccess(req.user, projectId, token);
+    if (!isAuthorized) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: `Project ${projectId} does not belong to any of your active onboarded teams.`,
+      });
+      return;
+    }
+
     const namespace = (req.query.namespace as string) || 'default';
     const triggerName = sanitizeTriggerName(repoName);
 

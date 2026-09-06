@@ -279,6 +279,10 @@ describe('Authentication, LDAP Group Resolution & Team Authorization', () => {
     expect(escapeLdapFilter('c:\\test')).toBe('c:\\5ctest');
     expect(escapeLdapFilter('null\0byte')).toBe('null\\00byte');
     expect(escapeLdapFilter('admin*)(uid=*))(|(uid=*')).toBe('admin\\2a\\29\\28uid=\\2a\\29\\29\\28|\\28uid=\\2a');
+    expect(escapeLdapFilter('')).toBe('');
+    expect(escapeLdapFilter(undefined as any)).toBe('');
+    expect(escapeLdapFilter(null as any)).toBe('');
+    expect(escapeLdapFilter(12345 as any)).toBe('');
   });
 
   it('authenticates API request using Bearer token without pre-existing cookie session', async () => {
