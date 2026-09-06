@@ -27,3 +27,4 @@ The frontend SHALL render a React + Tailwind CSS repository picker component fea
 #### Scenario: Displaying repository visibility badges
 - **WHEN** projects are loaded in the picker
 - **THEN** each repository item renders a color-coded Tailwind badge indicating its visibility level (green for public, yellow for internal, purple for private)
+

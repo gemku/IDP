@@ -45,3 +45,4 @@ Kpack build environments SHALL be configured with explicit container memory limi
 #### Scenario: Large build execution without OOM
 - **WHEN** a high-memory application build executes under Kpack
 - **THEN** the build pod utilizes allocated memory headroom within configured container limits and completes without being killed by the Linux kernel OOM killer
+

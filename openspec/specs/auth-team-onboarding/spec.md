@@ -49,3 +49,4 @@ The platform SHALL provide an Admin UI allowing platform administrators to creat
 #### Scenario: Administrator enters an invalid GitLab group path
 - **WHEN** an administrator enters a GitLab group path that does not exist or is inaccessible
 - **THEN** the backend rejects the submission with a 422 Unprocessable Entity error indicating the group could not be verified in GitLab
+

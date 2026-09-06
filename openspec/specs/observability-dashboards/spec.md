@@ -41,3 +41,4 @@ The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoN
 #### Scenario: Build completes during log streaming
 - **WHEN** the last initContainer (`export`) finishes and the build pod terminates
 - **THEN** the SSE endpoint sends a completion event and cleanly closes the stream connection
+

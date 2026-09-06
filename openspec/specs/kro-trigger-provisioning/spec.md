@@ -38,3 +38,4 @@ The backend service SHALL call the GitLab REST API `POST /api/v4/projects/:id/ho
 #### Scenario: Duplicate webhook detection
 - **WHEN** a webhook pointing to the platform gateway already exists in the GitLab project
 - **THEN** the backend updates the existing webhook secret and URL rather than creating a duplicate entry
+
