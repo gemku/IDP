@@ -72,7 +72,7 @@ The platform SHALL cross-reference the user's resolved LDAP group DNs against th
 - **THEN** the platform deduplicates the group DN list before constructing the SQL query placeholders
 
 ### Requirement: Admin Team Onboarding Management
-The platform SHALL provide an Admin UI allowing authenticated platform administrators to create, read, update, delete, and toggle the active status of records in `onboarded_teams`, validate `gitlab_group_path` values against the GitLab API, strictly validate numeric identifier route parameters, safely handle missing request bodies, and reject duplicate team updates with conflict errors.
+The platform SHALL provide an Admin UI allowing authenticated platform administrators to create, read, update, delete, and toggle the active status of records in `onboarded_teams`, validate `gitlab_group_path` values against the GitLab API, strictly validate numeric identifier route parameters, reject whitespace-only mutation values, safely handle missing request bodies, return structured JSON errors on malformed payloads, and reject duplicate team updates with conflict errors.
 
 #### Scenario: Administrator adds and validates a new team
 - **WHEN** an administrator submits a new team with name, LDAP group DN, and GitLab group path
@@ -97,3 +97,11 @@ The platform SHALL provide an Admin UI allowing authenticated platform administr
 #### Scenario: Unauthenticated request to admin endpoints rejected
 - **WHEN** an unauthenticated client sends a request to any `/api/admin/*` endpoint
 - **THEN** the backend rejects the request with a 401 Unauthorized status
+
+#### Scenario: Whitespace-only string rejected in team creation or update
+- **WHEN** an administrator submits a team name, LDAP DN, or GitLab group path consisting entirely of whitespace
+- **THEN** the backend rejects the submission with a 400 Bad Request error indicating missing required fields
+
+#### Scenario: Malformed JSON payload returns structured JSON error
+- **WHEN** a client sends a request body with invalid JSON syntax
+- **THEN** the application error middleware catches the syntax error and responds with HTTP 400 and a JSON `{ "error": "Invalid JSON payload" }` response

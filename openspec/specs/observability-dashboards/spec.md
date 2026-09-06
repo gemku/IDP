@@ -40,7 +40,7 @@ The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`m
 - **THEN** the quantity parser converts and scales the inputs safely without throwing unhandled type errors
 
 ### Requirement: Live Terminal Build Log Streaming via SSE
-The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, setting reverse-proxy unbuffering headers and cleanly aborting when clients disconnect.
+The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoName/logs`) that tails live Kpack build initContainer logs (`detect`, `build`, `export`) using the Kubernetes Core API and streams chunks to a dark-mode frontend terminal component, setting reverse-proxy unbuffering headers, cleanly aborting when clients disconnect, and displaying custom server-sent error event descriptions in the terminal log.
 
 #### Scenario: User streams live build logs
 - **WHEN** a user opens the log viewer for an active build
@@ -61,3 +61,7 @@ The backend SHALL expose a Server-Sent Events (SSE) endpoint (`/api/repos/:repoN
 #### Scenario: Terminal component handles dynamic phase updates and clipboard actions
 - **WHEN** log chunks are received across build phases or copied to clipboard
 - **THEN** the terminal component captures the active build phase without stale closure anomalies and handles clipboard rejections gracefully
+
+#### Scenario: Server-sent error event rendered in terminal
+- **WHEN** the backend transmits a custom `event: error` SSE block with an error message payload
+- **THEN** the terminal component parses the error payload and renders an informative system error line in the log stream
