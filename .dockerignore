@@ -1,0 +1,16 @@
+node_modules/
+dist/
+data/
+*.db
+*.db-journal
+.git/
+.github/
+.vscode/
+.gemini/
+tests/
+coverage/
+openspec/changes/archive/
+.env*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
