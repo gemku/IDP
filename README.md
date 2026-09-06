@@ -86,7 +86,7 @@ flowchart LR
 
     subgraph Observability ["4. Telemetry & Console"]
         E -.->|Pod Logs SSE| I[Dark Terminal Component]
-        G -.->|metrics.k8s.io| J[Resource Gauges (CPU/RAM)]
+        G -.->|metrics.k8s.io| J["Resource Gauges (CPU/RAM)"]
     end
 ```
 
