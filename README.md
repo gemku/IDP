@@ -1,7 +1,7 @@
 # Internal Developer Platform (IDP) Orchestrator
 
 [![OpenSpec Driven](https://img.shields.io/badge/OpenSpec-Spec--Driven-indigo.svg)](openspec/specs)
-[![Tests Passing](https://img.shields.io/badge/tests-82%20passed-emerald.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-92%20passed-emerald.svg)](tests/)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24%20(native%20sqlite)-blue.svg)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![Kubernetes Native](https://img.shields.io/badge/Kubernetes-Native%20Orchestrator-326ce5.svg)](k8s/)
