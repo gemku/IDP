@@ -16,12 +16,18 @@ export interface DatabaseConfig {
   };
 }
 
+export interface LoggingConfig {
+  level: 'debug' | 'info' | 'warn' | 'error';
+  format: 'json' | 'pretty';
+}
+
 export interface AppConfig {
   server: {
     port: number;
     sessionSecret: string;
     databasePath: string;
   };
+  logging: LoggingConfig;
   database: DatabaseConfig;
   gitlab: {
     url: string;
@@ -102,11 +108,23 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
   };
 
+  const rawLogLevel = env.LOG_LEVEL?.toLowerCase();
+  const level = (['debug', 'info', 'warn', 'error'].includes(rawLogLevel || '')
+    ? rawLogLevel
+    : 'info') as 'debug' | 'info' | 'warn' | 'error';
+
+  const rawLogFormat = env.LOG_FORMAT?.toLowerCase();
+  const format = (rawLogFormat === 'pretty' ? 'pretty' : 'json') as 'json' | 'pretty';
+
   return {
     server: {
       port: parseInt(env.PORT || '3000', 10),
       sessionSecret: env.SESSION_SECRET || 'dev-insecure-session-secret-replace-in-prod',
       databasePath,
+    },
+    logging: {
+      level,
+      format,
     },
     database: databaseConfig,
     gitlab: {

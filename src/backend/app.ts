@@ -14,6 +14,8 @@ import { createReposRouter } from './routes/repos.js';
 import { createTriggersRouter } from './routes/triggers.js';
 import { createObservabilityRouter, createFleetRouter } from './routes/observability.js';
 import { createBearerAuthMiddleware } from './middleware/authGuard.js';
+import { createRequestLoggerMiddleware } from './middleware/requestLogger.js';
+import { Logger, defaultLogger } from './utils/logger.js';
 import { AppConfig } from './config.js';
 
 export interface AppDependencies {
@@ -24,11 +26,14 @@ export interface AppDependencies {
   kroService: KroService;
   metricsService: MetricsService;
   logStreamingService: LogStreamingService;
+  logger?: Logger;
 }
 
 export function createApp(deps: AppDependencies, preMiddleware?: RequestHandler): Express {
   const app = express();
+  const logger = deps.logger || (deps.config ? new Logger(deps.config.logging) : defaultLogger);
 
+  app.use(createRequestLoggerMiddleware({ logger }));
   app.use(cors());
   app.use(express.json());
 

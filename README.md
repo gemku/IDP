@@ -1,7 +1,7 @@
 # Internal Developer Platform (IDP) Orchestrator
 
 [![OpenSpec Driven](https://img.shields.io/badge/OpenSpec-Spec--Driven-indigo.svg)](openspec/specs)
-[![Tests Passing](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-104%20passed-emerald.svg)](tests/)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24%20(native%20sqlite)-blue.svg)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![Kubernetes Native](https://img.shields.io/badge/Kubernetes-Native%20Orchestrator-326ce5.svg)](k8s/)
@@ -195,6 +195,8 @@ Open **[http://localhost:3000](http://localhost:3000)** to access the developer 
 | Variable | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
 | `PORT` | No | `3000` | HTTP port for the Express application server. |
+| `LOG_LEVEL` | No | `info` | Minimum log severity: `debug`, `info`, `warn`, `error`. |
+| `LOG_FORMAT` | No | `json` | Log formatting mode: `json` (machine-readable) or `pretty` (dev text). |
 | `DATABASE_CLIENT` | No | `sqlite` | Database engine: `sqlite` or `postgres`. |
 | `DATABASE_PATH` | No | `data/platform.db` | Local file path for the SQLite database. |
 | `DATABASE_URL` | No | — | Full PostgreSQL connection URI (e.g., `postgresql://user:pass@host:5432/db`). |
@@ -340,13 +342,15 @@ Current test suite summary:
  ✓ tests/repositoryPicker.test.ts (5 tests)
  ✓ tests/argoKpack.test.ts (4 tests)
  ✓ tests/postgresDb.test.ts (6 tests)
- ✓ tests/config.test.ts (3 tests)
+ ✓ tests/logger.test.ts (6 tests)
+ ✓ tests/requestLogger.test.ts (4 tests)
+ ✓ tests/config.test.ts (4 tests)
  ✓ tests/e2e.test.ts (1 test)
  ✓ tests/kroTrigger.test.ts (9 tests)
  ✓ tests/auth.test.ts (18 tests)
 
- Test Files  13 passed (13)
-      Tests  93 passed (93)
+ Test Files  15 passed (15)
+      Tests  104 passed (104)
 ```
 
 ---

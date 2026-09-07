@@ -35,6 +35,23 @@ describe('AppConfig - Environment Configuration', () => {
     expect(config.kubernetes.kroNamespace).toBe('kro-system');
     expect(config.database.client).toBe('sqlite');
     expect(config.database.sqlite?.databasePath).toBe('data/platform.db');
+    expect(config.logging.level).toBe('info');
+    expect(config.logging.format).toBe('json');
+  });
+
+  it('parses custom LOG_LEVEL and LOG_FORMAT environment settings', () => {
+    const customEnv = {
+      GITLAB_CLIENT_ID: 'mock-client-id',
+      GITLAB_CLIENT_SECRET: 'mock-client-secret',
+      LDAP_BIND_DN: 'cn=admin,dc=example,dc=com',
+      LDAP_BIND_PASSWORD: 'admin-password',
+      LOG_LEVEL: 'debug',
+      LOG_FORMAT: 'pretty',
+    };
+
+    const config = loadConfig(customEnv);
+    expect(config.logging.level).toBe('debug');
+    expect(config.logging.format).toBe('pretty');
   });
 
   it('detects postgres client from DATABASE_CLIENT or DATABASE_URL', () => {
