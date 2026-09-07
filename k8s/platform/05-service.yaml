@@ -7,13 +7,14 @@ metadata:
     app.kubernetes.io/name: platform-backend
     app.kubernetes.io/part-of: internal-developer-platform
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: platform-backend
   ports:
     - name: http
       port: 3000
       targetPort: 3000
+      nodePort: 30000
       protocol: TCP
 ---
 apiVersion: v1
@@ -25,13 +26,14 @@ metadata:
     app.kubernetes.io/name: platform-frontend
     app.kubernetes.io/part-of: internal-developer-platform
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: platform-frontend
   ports:
     - name: http
       port: 80
       targetPort: 80
+      nodePort: 30080
       protocol: TCP
 ---
 apiVersion: v1
