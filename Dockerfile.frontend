@@ -1,0 +1,35 @@
+# ==============================================================================
+# Stage 1: Build React Vite SPA
+# ==============================================================================
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code and build frontend client
+COPY tsconfig.json ./
+COPY vite.config.mts ./
+COPY index.html ./
+COPY src/ ./src/
+RUN npm run build:client
+
+# ==============================================================================
+# Stage 2: Minimal NGINX Alpine static runner
+# ==============================================================================
+FROM nginx:alpine AS runner
+
+# Copy custom NGINX configuration with SPA fallback
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy compiled frontend assets
+COPY --from=builder /app/dist/client /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/healthz || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

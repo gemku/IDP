@@ -19,7 +19,8 @@ kubectl apply -f k8s/platform/00-namespace.yaml
 kubectl apply -f k8s/platform/01-rbac.yaml
 kubectl apply -f k8s/platform/02-configmap-secret.yaml
 kubectl apply -f k8s/platform/03-pvc.yaml
-kubectl apply -f k8s/platform/04-deployment.yaml
+kubectl apply -f k8s/platform/04-backend-deployment.yaml
+kubectl apply -f k8s/platform/04-frontend-deployment.yaml
 kubectl apply -f k8s/platform/05-service.yaml
 kubectl apply -f k8s/platform/06-ingress.yaml
 

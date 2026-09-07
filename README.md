@@ -226,15 +226,30 @@ The repository includes production Kubernetes manifests under [`k8s/platform/`](
 
 ### Container Packaging
 
-Build the lean multi-stage Docker container image (`node:24-alpine`):
-```bash
-docker build -t platform-api:latest .
-```
-The Docker image compiles TypeScript, packages the client bundle into `/app/dist/client`, and drops privileges to run as the non-root `node` user (UID 1000).
+The platform provides dedicated, decoupled container images for the backend API and frontend web application:
+
+1. **Backend API Image (`platform-backend:latest`)**:
+   Built via `Dockerfile.backend` (or `Dockerfile`) targeting Node.js 24 Alpine, executing under non-root `node` (UID 1000) on port 3000:
+   ```bash
+   npm run docker:build:backend
+   # or: docker build -f Dockerfile.backend -t platform-backend:latest .
+   ```
+
+2. **Frontend Static SPA Image (`platform-frontend:latest`)**:
+   Built via `Dockerfile.frontend` using a multi-stage build that compiles the React SPA via Vite and serves static assets using high-performance `nginx:alpine` on port 80 with client-side routing fallback:
+   ```bash
+   npm run docker:build:frontend
+   # or: docker build -f Dockerfile.frontend -t platform-frontend:latest .
+   ```
+
+3. **Build Both Images**:
+   ```bash
+   npm run docker:build
+   ```
 
 ### Deploying Manifests
 
-Deploy cluster dependencies and platform workloads using the automated deployment script:
+Deploy cluster dependencies and decoupled platform workloads using the automated deployment script:
 ```powershell
 ./k8s/scripts/deploy-platform.ps1
 ```
@@ -244,12 +259,13 @@ Or apply manually in sequence:
 kubectl apply -f k8s/platform/00-namespace.yaml
 kubectl apply -f k8s/platform/01-rbac.yaml
 
-# 2. ConfigMap, Secret, & SQLite Storage
+# 2. ConfigMap, Secret, & Storage
 kubectl apply -f k8s/platform/02-configmap-secret.yaml
 kubectl apply -f k8s/platform/03-pvc.yaml
 
-# 3. Deployment, Service, & Ingress
-kubectl apply -f k8s/platform/04-deployment.yaml
+# 3. Decoupled Deployments, Services, & Ingress
+kubectl apply -f k8s/platform/04-backend-deployment.yaml
+kubectl apply -f k8s/platform/04-frontend-deployment.yaml
 kubectl apply -f k8s/platform/05-service.yaml
 kubectl apply -f k8s/platform/06-ingress.yaml
 ```
