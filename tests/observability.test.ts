@@ -153,6 +153,34 @@ describe('Observability Services and Endpoints', () => {
     expect(body).toContain('"status":"succeeded"');
   });
 
+  it('streams logs via /api/repos/:repoName/stream route alias identical to /logs', async () => {
+    const mockLogSource = new MockLogSource();
+    const logService = new LogStreamingService(mockLogSource);
+    const metricsService = new MetricsService(new MockMetricsClient());
+
+    const app = express();
+    app.use((req, res, next) => {
+      (req as any).mockUser = {
+        gitlabUser: { username: 'alice' },
+        activeTeams: [{ id: 1, name: 'Platform' }],
+      };
+      next();
+    });
+
+    app.use('/api/repos', createObservabilityRouter(logService, metricsService));
+
+    const res = await request(app).get('/api/repos/payment-service/stream');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/event-stream');
+    expect(res.headers['x-accel-buffering']).toBe('no');
+
+    const body = res.text;
+    expect(body).toContain('event: start');
+    expect(body).toContain('event: phase');
+    expect(body).toContain('"phase":"detect"');
+    expect(body).toContain('event: complete');
+  });
+
   it('returns fleet health and 4-step pipeline status metrics', async () => {
     const mockLogSource = new MockLogSource();
     const logService = new LogStreamingService(mockLogSource);

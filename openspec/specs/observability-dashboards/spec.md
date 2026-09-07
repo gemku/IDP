@@ -26,11 +26,15 @@ The platform frontend and backend SHALL expose and render an Aggregated Fleet Da
 - **THEN** the application switches views responsively without requiring page refreshes
 
 ### Requirement: Individual Repository 4-Step Pipeline Status
-The frontend SHALL render an Individual Repository Dashboard showing real-time 4-step pipeline status progression: KRO provisioner (`KRO`), webhook receiver (`EventSource`), pipeline runner (`Workflow`), and image builder (`Kpack`).
+The frontend SHALL render an Individual Repository Dashboard showing real-time 4-step pipeline status progression: KRO provisioner (`KRO`), webhook receiver (`EventSource`), pipeline runner (`Workflow`), and image builder (`Kpack`). When a repository is selected, the frontend SHALL dynamically retrieve pipeline milestone status from `/api/repos/:repoName/pipeline-status` and pod resource metrics from `/api/repos/:repoName/metrics`, falling back gracefully to baseline metrics if the endpoints are unavailable.
 
 #### Scenario: Visualizing repository pipeline status
 - **WHEN** a user selects a repository dashboard
 - **THEN** the UI displays four sequential milestone badges showing current state (Pending, Running, Succeeded, or Failed) with corresponding timestamp and latency details
+
+#### Scenario: Dynamic telemetry fetching on repository selection
+- **WHEN** a user switches between repositories in the dashboard
+- **THEN** the client queries `/api/repos/:repoName/pipeline-status` and `/api/repos/:repoName/metrics` and updates the pipeline stage badges and resource gauges dynamically
 
 ### Requirement: Real-Time Resource Utilization Gauges
 The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`metrics.k8s.io/v1beta1`) and calculate percentage CPU and memory usage against pod limits, safely parsing both string and numeric metric representations without runtime exceptions, clamping percentage values between 0 and 100 percent, and falling back to pod resource limits when the metrics server is unavailable without failing the dashboard view.
@@ -52,11 +56,11 @@ The platform backend SHALL query pod metrics from the Kubernetes Metrics API (`m
 - **THEN** the backend clamps CPU and memory percentage values strictly within the range of 0 to 100 percent inclusive
 
 ### Requirement: Live Terminal Build Log Streaming via SSE
-The backend SHALL expose an SSE endpoint (`/api/repos/:repoName/logs`) tailing Kpack build initContainer logs (`detect`, `build`, `export`) to a dark-mode terminal component. It SHALL validate repository names, extract query parameters safely, set unbuffering headers, handle disconnects cleanly, render custom error events, and bound log buffer capacity.
+The backend SHALL expose SSE streaming endpoints (`/api/repos/:repoName/logs` and `/api/repos/:repoName/stream`) tailing Kpack build initContainer logs (`detect`, `build`, `export`) to a dark-mode terminal component. It SHALL validate repository names, extract query parameters safely, set unbuffering headers, handle disconnects cleanly, render custom error events, bound log buffer capacity, and output diagnostic messages upon stream disconnection or failure.
 
 #### Scenario: User streams live build logs
 - **WHEN** a user opens the log viewer for an active build
-- **THEN** the frontend establishes an EventSource connection to `/api/repos/:repoName/logs` and renders ANSI-formatted log output in sequence across the `detect`, `build`, and `export` phases
+- **THEN** the frontend establishes an EventSource connection to `/api/repos/:repoName/logs` or `/api/repos/:repoName/stream` and renders ANSI-formatted log output in sequence across the `detect`, `build`, and `export` phases
 
 #### Scenario: Build completes during log streaming
 - **WHEN** the last initContainer (`export`) finishes and the build pod terminates
@@ -77,6 +81,10 @@ The backend SHALL expose an SSE endpoint (`/api/repos/:repoName/logs`) tailing K
 #### Scenario: Server-sent error event rendered in terminal
 - **WHEN** the backend transmits a custom `event: error` SSE block with an error message payload
 - **THEN** the terminal component parses the error payload and renders an informative system error line in the log stream
+
+#### Scenario: Terminal logs connection error or premature disconnection
+- **WHEN** an EventSource connection fails or is severed before completing
+- **THEN** the terminal component renders a diagnostic error line indicating the disconnection event and sets connected status to false
 
 #### Scenario: Empty or whitespace repository name rejected
 - **WHEN** a client requests logs, metrics, or pipeline status with an empty or whitespace-only repository name parameter

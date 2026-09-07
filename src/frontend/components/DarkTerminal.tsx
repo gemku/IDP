@@ -105,6 +105,20 @@ export const DarkTerminal: React.FC<DarkTerminalProps> = ({
 
     eventSource.onerror = () => {
       setIsConnected(false);
+      setLogs((prev) => {
+        const lastLog = prev[prev.length - 1];
+        if (lastLog?.line.includes('Stream disconnected or encountered a network error')) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            phase: 'system',
+            line: `[SYSTEM] Stream disconnected or encountered a network error on ${streamUrl}`,
+            timestamp: new Date().toISOString(),
+          },
+        ].slice(-2000);
+      });
       eventSource.close();
     };
 

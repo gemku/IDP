@@ -32,8 +32,8 @@ export function createObservabilityRouter(
 ): Router {
   const router = Router();
 
-  // GET /api/repos/:repoName/logs (SSE Stream)
-  router.get('/:repoName/logs', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
+  // GET /api/repos/:repoName/logs & /api/repos/:repoName/stream (SSE Stream)
+  const handleLogStream = async (req: AuthenticatedRequest, res: Response) => {
     const rawRepoName = Array.isArray(req.params.repoName) ? req.params.repoName[0] : req.params.repoName;
     const repoName = typeof rawRepoName === 'string' ? rawRepoName.trim() : '';
     if (!repoName) {
@@ -43,7 +43,10 @@ export function createObservabilityRouter(
     const namespace = getStringParam(req.query.namespace, 'default') || 'default';
 
     await logService.streamKpackLogs(namespace, repoName, res, 5);
-  });
+  };
+
+  router.get('/:repoName/logs', requireOnboardedTeam, handleLogStream);
+  router.get('/:repoName/stream', requireOnboardedTeam, handleLogStream);
 
   // GET /api/repos/:repoName/metrics
   router.get('/:repoName/metrics', requireOnboardedTeam, async (req: AuthenticatedRequest, res: Response) => {
