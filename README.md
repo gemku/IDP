@@ -1,7 +1,7 @@
 # Internal Developer Platform (IDP) Orchestrator
 
 [![OpenSpec Driven](https://img.shields.io/badge/OpenSpec-Spec--Driven-indigo.svg)](openspec/specs)
-[![Tests Passing](https://img.shields.io/badge/tests-92%20passed-emerald.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-93%20passed-emerald.svg)](tests/)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24%20(native%20sqlite)-blue.svg)](https://nodejs.org/)
 [![React 19](https://img.shields.io/badge/React-19-cyan.svg)](https://react.dev/)
 [![Kubernetes Native](https://img.shields.io/badge/Kubernetes-Native%20Orchestrator-326ce5.svg)](k8s/)
@@ -302,7 +302,9 @@ SQLite is a file-backed database that requires single-writer access:
 - `GET /api/repos?teamId=:id&search=:term&page=:num`: Lists scoped GitLab projects for the user's active team.
 - `POST /api/repos/:projectId/trigger`: Dispatches a pipeline execution via KRO resource graphs.
 - `GET /api/repos/:repoName/metrics`: Returns real-time pod CPU and memory usage from `metrics.k8s.io`.
-- `GET /api/repos/:repoName/stream`: Server-Sent Events (SSE) stream of live container logs.
+- `GET /api/repos/:repoName/pipeline-status`: Returns real-time 4-step pipeline milestone status.
+- `GET /api/repos/:repoName/logs`: Server-Sent Events (SSE) stream of live container logs (canonical).
+- `GET /api/repos/:repoName/stream`: Server-Sent Events (SSE) route alias for live container logs.
 
 ### Fleet Telemetry (`/api/fleet`)
 - `GET /api/fleet/health`: Returns aggregated build statistics across all onboarded engineering teams.
@@ -331,7 +333,7 @@ Current test suite summary:
 ```text
  ✓ tests/db.test.ts (7 tests)
  ✓ tests/repos.test.ts (8 tests)
- ✓ tests/observability.test.ts (11 tests)
+ ✓ tests/observability.test.ts (12 tests)
  ✓ tests/healthLifecycle.test.ts (10 tests)
  ✓ tests/frontendEntry.test.ts (5 tests)
  ✓ tests/kubernetesDeployment.test.ts (5 tests)
@@ -344,7 +346,7 @@ Current test suite summary:
  ✓ tests/auth.test.ts (18 tests)
 
  Test Files  13 passed (13)
-      Tests  92 passed (92)
+      Tests  93 passed (93)
 ```
 
 ---
