@@ -8,6 +8,10 @@
 
 A cloud-native Internal Developer Platform (IDP) that unifies identity-based team onboarding, GitLab repository discovery, KRO resource graph trigger provisioning, Argo & Kpack pipeline execution, and live terminal observability inside a modern single-page console.
 
+> [!NOTE]
+> **Why "Sene" (ሰኔ)?**  
+> In Amharic (Ethiopian calendar), **Sene (ሰኔ)** corresponds to June and marks the season of renewal, planting, and cultivating fresh growth. In that same spirit, **Sene IDP** serves as the fertile ground where engineering teams seed, cultivate, and scale cloud-native applications and infrastructure with automated delivery pipelines, identity orchestration, and unified observability.
+
 ---
 
 ## 📑 Table of Contents
