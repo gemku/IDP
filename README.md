@@ -1,4 +1,4 @@
-# Internal Developer Platform (IDP) Orchestrator
+# Sene IDP - Internal Developer Platform Orchestrator
 
 [![OpenSpec Driven](https://img.shields.io/badge/OpenSpec-Spec--Driven-indigo.svg)](openspec/specs)
 [![Tests Passing](https://img.shields.io/badge/tests-104%20passed-emerald.svg)](tests/)
@@ -135,7 +135,7 @@ flowchart LR
 1. **Clone the repository and install dependencies**:
    ```bash
    git clone <repo-url>
-   cd openspec-demo
+   cd sene-idp
    npm install
    ```
 
