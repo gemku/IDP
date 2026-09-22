@@ -138,7 +138,12 @@ flowchart LR
 
 1. **Clone the repository and install dependencies**:
    ```bash
-   git clone <repo-url>
+   # Via HTTPS:
+   git clone https://gitlab.safaricomet.net/admin.fitsumtaye/sene-idp.git
+
+   # Or via SSH:
+   git clone git@gitlab.safaricomet.net:admin.fitsumtaye/sene-idp.git
+
    cd sene-idp
    npm install
    ```
